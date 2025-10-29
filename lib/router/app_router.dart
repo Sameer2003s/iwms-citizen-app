@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'dart:async'; // <<< FIXED: Added dart:async for StreamSubscription
+import 'dart:async'; // Needed for GoRouterRefreshStream
 
 // New layered imports
 import '../core/di.dart';
@@ -15,7 +15,7 @@ import '../presentation/citizen/register.dart';
 import '../presentation/citizen/calender.dart';
 import '../presentation/citizen/driver_details.dart';
 import '../presentation/citizen/track_waste.dart';
-import '../presentation/citizen/map.dart'; // <<< ADDED MAP IMPORT
+import '../presentation/citizen/map.dart'; 
 
 
 // --- Named Routes (The map addresses) ---
@@ -29,7 +29,7 @@ class AppRoutePaths {
   static const citizenHistory = '/citizen/history';
   static const citizenTrack = '/citizen/track';
   static const citizenDriverDetails = '/citizen/driver-details';
-  static const citizenMap = '/citizen/map'; // New path for the map screen
+  static const citizenMap = '/citizen/map'; 
 }
 
 
@@ -49,22 +49,30 @@ class AppRouter {
       final isRegistering = state.uri.toString() == AppRoutePaths.register;
       final isSplash = state.uri.toString() == AppRoutePaths.splash;
 
-      // --- LOGIC RULES ---
-      if (authState.role == UserRole.unknown) {
+      // --- CRITICAL FIX: FORCING SPLASH SCREEN VISIBILITY ---
+      // 1. If the AuthBloc is still checking status (Auth/Vehicle State Initial), 
+      //    force the app to stay on the Splash screen path.
+      if (authState is AuthStateInitial) {
         return isSplash ? null : AppRoutePaths.splash;
       }
 
+      // --- LOGIC RULES (Only run once initialization is complete) ---
+
       if (authState.role == UserRole.unauthenticated) {
+        // If logged out: Allow access to Login/Register, otherwise redirect to Login
         return isLoggingIn || isRegistering ? null : AppRoutePaths.login;
       }
 
       if (authState.role == UserRole.citizen) {
+        // If logged in: Block access to Login/Splash/Register, redirect to Dashboard
         if (isLoggingIn || isSplash || isRegistering) {
-            return AppRoutePaths.citizenDashboard;
+             return AppRoutePaths.citizenDashboard;
         }
+        // User is authenticated and navigating correctly.
         return null;
       }
       
+      // Default fallback (should lead to login or dashboard depending on state)
       return null;
     },
 
@@ -107,25 +115,22 @@ class AppRouter {
       GoRoute(
         path: AppRoutePaths.citizenDriverDetails,
         builder: (context, state) {
-            return DriverDetailsScreen(
-                // Data is not required for the driver details screen based on your setup
-                driverName: 'Rajesh Kumar', 
-                vehicleNumber: 'TN 01 AB 1234', 
-            );
-        },
+             return DriverDetailsScreen(
+                 driverName: 'Rajesh Kumar', 
+                 vehicleNumber: 'TN 01 AB 1234', 
+             );
+         },
       ),
-      // New Map Route to receive data via state.extra
       GoRoute(
         name: 'citizenMap',
         path: AppRoutePaths.citizenMap,
         builder: (context, state) {
-            // Retrieve arguments passed via context.pushNamed(extra: ...)
-            final args = state.extra as Map<String, dynamic>? ?? {};
-            return MapScreen(
-                driverName: args['driverName'] as String? ?? 'N/A',
-                vehicleNumber: args['vehicleNumber'] as String? ?? 'N/A',
-            );
-        },
+             final args = state.extra as Map<String, dynamic>? ?? {};
+             return MapScreen(
+                 driverName: args['driverName'] as String? ?? 'N/A',
+                 vehicleNumber: args['vehicleNumber'] as String? ?? 'N/A',
+             );
+         },
       ),
     ],
   );

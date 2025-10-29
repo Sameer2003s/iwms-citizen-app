@@ -6,34 +6,33 @@ plugins {
 }
 
 android {
-    namespace = "com.example.user_login"
+    namespace = "com.example.user_login" // Ensure this matches your package name
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        // CRITICAL FIX 1: Set source/target to Java 17 for stability with modern libraries
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11.toString()
+        jvmTarget = JavaVersion.VERSION_17.toString()
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.iwms_citizen_app"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
+        applicationId = "com.example.user_login"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        
+        // CRITICAL FIX 2: Enable MultiDex for apps with many dependencies (Bloc, Map, etc.)
+        multiDexEnabled = true 
     }
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
         }
     }
@@ -41,4 +40,10 @@ android {
 
 flutter {
     source = "../.."
+}
+
+// CRITICAL FIX 3: Add the MultiDex dependency
+dependencies {
+    // This library is required to enable multidex support
+    implementation("androidx.multidex:multidex:2.0.1") 
 }
