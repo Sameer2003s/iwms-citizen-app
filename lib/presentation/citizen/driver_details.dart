@@ -1,38 +1,31 @@
 import 'package:flutter/material.dart';
-import 'package:user_login/map.dart'; // Import the MapScreen
-import '../main.dart'; // Accesses shared constants
+// Note: Relative imports now work since you moved this file into presentation/citizen/
+import '../../core/constants.dart'; 
+import 'package:go_router/go_router.dart'; // Import GoRouter
 
-// --- Reusable custom slide-up transition function (for MapScreen) ---
-Route _createSlideUpRoute(Widget targetPage) {
-  return PageRouteBuilder(
-    transitionDuration: const Duration(milliseconds: 500),
-    pageBuilder: (context, animation, secondaryAnimation) => targetPage,
-    transitionsBuilder: (context, animation, secondaryAnimation, child) {
-      const begin = Offset(0.0, 1.0);
-      const end = Offset.zero;
-      const curve = Curves.easeOutCubic;
-
-      var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-
-      return SlideTransition(
-        position: animation.drive(tween),
-        child: child,
-      );
-    },
-  );
-}
+// --- Reusable custom slide-up transition is now deprecated, use GoRouter navigation ---
 
 class DriverDetailsScreen extends StatelessWidget {
-  // Mock Data (In a real app, this would be passed from an API call)
-  final String driverName = 'Rajesh Kumar';
-  final String vehicleNumber = 'TN 01 AB 1234';
+  // Make parameters nullable to handle data passed via GoRouter state.extra
+  final String? driverName;
+  final String? vehicleNumber;
+
+  const DriverDetailsScreen({
+    super.key,
+    this.driverName,
+    this.vehicleNumber,
+  });
+
+  // Mock Data fallback (in case GoRouter fails to pass data)
   final String collectionTime = 'Tomorrow, 7:00 AM - 8:00 AM';
   final String collectionType = 'Wet Waste';
 
-  const DriverDetailsScreen({super.key});
-
   @override
   Widget build(BuildContext context) {
+    // Safely use fallback values
+    final currentDriverName = driverName ?? 'Rajesh Kumar (N/A)';
+    final currentVehicleNumber = vehicleNumber ?? 'TN 01 AB 1234 (N/A)';
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text('Collection Details'),
@@ -92,7 +85,7 @@ class DriverDetailsScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          driverName,
+                          currentDriverName,
                           style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
                         ),
                         Text(
@@ -101,7 +94,7 @@ class DriverDetailsScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Vehicle No: $vehicleNumber',
+                          'Vehicle No: $currentVehicleNumber',
                           style: const TextStyle(fontWeight: FontWeight.w500),
                         ),
                       ],
@@ -118,12 +111,13 @@ class DriverDetailsScreen extends StatelessWidget {
               height: 56,
               child: ElevatedButton.icon(
                 onPressed: () {
-                  // Navigate to the MapScreen with the custom smooth transition
-                  Navigator.of(context).push(
-                    _createSlideUpRoute(MapScreen(
-                      driverName: driverName,
-                      vehicleNumber: vehicleNumber,
-                    )),
+                  // NEW GOROUTER NAVIGATION: Navigate to the MapScreen
+                  context.pushNamed(
+                    'citizenMap', // Use a named route for cleaner navigation
+                    extra: {
+                      'driverName': currentDriverName,
+                      'vehicleNumber': currentVehicleNumber,
+                    },
                   );
                 },
                 icon: const Icon(Icons.location_searching, color: Colors.white),

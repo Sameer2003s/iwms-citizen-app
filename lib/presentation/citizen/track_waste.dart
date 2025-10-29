@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../main.dart'; // Accesses shared constants
+// Layered imports
+import '../../core/constants.dart'; 
 
 class TrackWasteScreen extends StatelessWidget {
   const TrackWasteScreen({super.key});

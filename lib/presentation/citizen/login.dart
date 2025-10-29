@@ -1,7 +1,14 @@
 import 'package:flutter/material.dart';
-import 'home.dart'; // Navigate to HomeScreen (simulating success)
-import 'register.dart'; // Navigate to RegisterScreen (simulating new user)
-import '../main.dart'; // Accesses shared constants
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
+
+// Layered imports
+import '../../core/constants.dart';
+import '../../logic/auth/auth_bloc.dart';
+import '../../logic/auth/auth_event.dart';
+// Note: AuthState is implicitly used by context.read but not needed for the listener here
+import '../../router/app_router.dart';
+
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -11,38 +18,39 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  // List of common country codes (can be expanded)
   final List<String> _countryCodes = ['+91', '+1', '+44', '+86', '+49'];
-  String _selectedCountryCode = '+91'; // Default to India
+  String _selectedCountryCode = '+91';
 
-  // Reusable custom slide-up transition function
-  Route _createRoute(Widget targetPage) {
-    return PageRouteBuilder(
-      transitionDuration: const Duration(milliseconds: 500),
-      pageBuilder: (context, animation, secondaryAnimation) => targetPage,
-      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-        const begin = Offset(0.0, 1.0);
-        const end = Offset.zero;
-        const curve = Curves.easeOut;
-
-        var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-
-        return SlideTransition(
-          position: animation.drive(tween),
-          child: child,
-        );
-      },
-    );
-  }
+  final TextEditingController _mobileController = TextEditingController(); 
+  
 
   void _handleContinue(BuildContext context) {
-    // CRITICAL FIX: Login success leads directly to the CitizenDashboard
-    const String placeholderName = "Citizen";
-    
-    Navigator.of(context).pushAndRemoveUntil(
-      _createRoute(const CitizenDashboard(userName: placeholderName)), 
-      (Route<dynamic> route) => false,
-    );
+    final mobileNumber = _mobileController.text.trim();
+    // CRITICAL: We only mock login if a valid-looking number is entered.
+    if (mobileNumber.length == 10) { 
+      // 1. Dispatch the Login Event to the AuthBloc
+      // The AuthBloc will change state to AuthStateAuthenticatedCitizen.
+      context.read<AuthBloc>().add(
+        AuthLoginRequested(
+          mobileNumber: mobileNumber,
+          otp: '123456', // Mock OTP
+        ),
+      );
+      // The GoRouter redirect logic in app_router.dart handles navigation.
+    } else {
+      // Show simple user feedback if input validation fails
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a valid 10-digit mobile number.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+  
+  void _navigateToRegister(BuildContext context) {
+    // Navigate to RegisterScreen using GoRouter
+    context.push(AppRoutePaths.register); 
   }
 
   // Helper widget to display the logo with a background
@@ -52,7 +60,7 @@ class _LoginScreenState extends State<LoginScreen> {
       width: 100,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white, // Solid white circular background
+        color: Colors.white,
         shape: BoxShape.circle,
         border: Border.all(color: Colors.white, width: 2), 
       ),
@@ -63,9 +71,9 @@ class _LoginScreenState extends State<LoginScreen> {
   // Custom Country Code Dropdown Menu
   Widget _buildCountryCodeDropdown() {
     return Container(
-      height: 56, // Fixed height matching TextFormField
+      height: 56,
       decoration: BoxDecoration(
-        color: Colors.white, // Use white
+        color: Colors.white,
         border: Border.all(color: kBorderColor, width: 1),
         borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(8.0),
@@ -97,24 +105,19 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  void _navigateToRegister(BuildContext context) {
-    // Navigate to RegisterScreen using custom transition
-    Navigator.of(context).push(_createRoute(const RegisterScreen()));
-  }
-
   @override
   Widget build(BuildContext context) {
-    // Background is now determined by the Scaffold's default color (white)
+    // REMOVED BlocListener here as navigation is handled centrally by GoRouter.
     return Scaffold(
       backgroundColor: Colors.white,
-      body: SafeArea( // Standard SafeArea for padding
+      body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 48.0), 
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const SizedBox(height: 40), // Standard top spacing
+              const SizedBox(height: 40), 
               
               // 1. Header/Logo
               _appLogoAsset(),
@@ -156,11 +159,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       // Input field
                       Expanded(
                         child: TextFormField(
+                          controller: _mobileController, // Attach controller
                           keyboardType: TextInputType.phone,
                           maxLength: 10,
                           style: const TextStyle(color: kTextColor, fontSize: 16),
-                          decoration: const InputDecoration(
-                            contentPadding: EdgeInsets.symmetric(horizontal: 16.0),
+                          decoration: InputDecoration(
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16.0),
                             hintText: "Mobile Number (10 digits)",
                             hintStyle: TextStyle(color: kPlaceholderColor, fontSize: 16),
                             filled: true,

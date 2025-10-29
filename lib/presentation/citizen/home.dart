@@ -1,33 +1,18 @@
 import 'package:flutter/material.dart';
-import '../main.dart'; // Accesses shared constants
-import 'driver_details.dart'; // Required for navigation from the dashboard
-import 'calender.dart'; // Required for navigation from the dashboard
-import 'track_waste.dart'; // Required for navigation to the tracking page
+import 'package:go_router/go_router.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
-// --- SHARED TRANSITION HELPER ---
-Route _createSlideUpRoute(Widget targetPage) {
-  return PageRouteBuilder(
-    transitionDuration: const Duration(milliseconds: 500),
-    pageBuilder: (context, animation, secondaryAnimation) => targetPage,
-    transitionsBuilder: (context, animation, secondaryAnimation, child) {
-      const begin = Offset(0.0, 1.0);
-      const end = Offset.zero;
-      const curve = Curves.easeOut;
+// Layered imports
+import '../../core/constants.dart'; 
+import '../../logic/auth/auth_bloc.dart';
+import '../../logic/auth/auth_event.dart';
+import '../../router/app_router.dart';
 
-      var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-
-      return SlideTransition(
-        position: animation.drive(tween),
-        child: child,
-      );
-    },
-  );
-}
+// Import local files (now siblings) for the actual pages, though GoRouter typically uses paths
 
 // --- 1. HOME SCREEN (Onboarding Completion View) ---
 
 class HomeScreen extends StatelessWidget {
-  // Field to hold the user's name passed from registration
   final String userName; 
 
   const HomeScreen({
@@ -37,7 +22,6 @@ class HomeScreen extends StatelessWidget {
   
   // Helper widget to display the logo
   Widget _imageAsset(String fileName, {required double width, required double height}) {
-    // Assuming 'assets/images/logo.png' exists
     return Image.asset(
       'assets/images/$fileName',
       width: width,
@@ -47,11 +31,8 @@ class HomeScreen extends StatelessWidget {
   }
 
   void _navigateToDashboard(BuildContext context) {
-    // Navigate to the actual dashboard and replace all routes below it
-    Navigator.of(context).pushAndRemoveUntil(
-      _createSlideUpRoute(CitizenDashboard(userName: userName)),
-      (Route<dynamic> route) => false,
-    );
+    // GoRouter handles the navigation and stack manipulation automatically
+    context.go(AppRoutePaths.citizenDashboard);
   }
 
   @override
@@ -96,7 +77,6 @@ class HomeScreen extends StatelessWidget {
               ),
               const SizedBox(height: 40),
               
-              // Placeholder for future actions: View QR Code
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
@@ -112,7 +92,6 @@ class HomeScreen extends StatelessWidget {
               ),
               const SizedBox(height: 10),
 
-               // Placeholder for future actions: Raise Grievance
                SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
@@ -129,10 +108,10 @@ class HomeScreen extends StatelessWidget {
               
               const SizedBox(height: 30),
               
-              // --- NEW SKIP BUTTON ---
+              // --- NAVIGATION BUTTON ---
               TextButton(
                 onPressed: () => _navigateToDashboard(context),
-                child: Text(
+                child: const Text(
                   'Skip to Dashboard',
                   style: TextStyle(
                     fontSize: 16,
@@ -157,12 +136,11 @@ class CitizenDashboard extends StatelessWidget {
 
   const CitizenDashboard({super.key, required this.userName});
 
-  // --- QR MODAL METHOD ---
   void _showQrCodeModal(BuildContext context) {
     showDialog(
       context: context,
-      barrierColor: Colors.black.withOpacity(0.8), // Dark background for visibility
-      barrierDismissible: true, // Allows dismissal by tapping background
+      barrierColor: Colors.black.withOpacity(0.8), 
+      barrierDismissible: true, 
       builder: (BuildContext context) {
         return ScaleTransition( 
           scale: Tween<double>(begin: 0.8, end: 1.0).animate(
@@ -195,7 +173,6 @@ class CitizenDashboard extends StatelessWidget {
                     ],
                   ),
                 ),
-                // Closing instruction at the bottom (optional)
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.only(bottom: 12),
@@ -213,9 +190,7 @@ class CitizenDashboard extends StatelessWidget {
     );
   }
 
-  // --- NOTIFICATION MODAL METHOD ---
   void _showNotificationModal(BuildContext context) {
-    // Mock Notification Data
     final List<Map<String, String>> mockNotifications = [
       {'time': '5 min ago', 'message': 'The collector is 15 minutes away from your location. Please prepare your waste.'},
       {'time': '2 hours ago', 'message': 'Next collection schedule is tomorrow: Wet Waste.'},
@@ -224,14 +199,14 @@ class CitizenDashboard extends StatelessWidget {
 
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true, // Allows content to control height
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (BuildContext context) {
         return Container(
           padding: const EdgeInsets.all(20),
-          height: MediaQuery.of(context).size.height * 0.5, // Take half the screen height
+          height: MediaQuery.of(context).size.height * 0.5, 
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -258,12 +233,11 @@ class CitizenDashboard extends StatelessWidget {
                   itemBuilder: (context, index) {
                     final notif = mockNotifications[index];
                     return ListTile(
-                      leading: Icon(Icons.notifications_active, color: kPrimaryColor),
+                      leading: const Icon(Icons.notifications_active, color: kPrimaryColor),
                       title: Text(notif['message']!, style: const TextStyle(fontWeight: FontWeight.w500)),
                       subtitle: Text(notif['time']!, style: const TextStyle(color: kPlaceholderColor, fontSize: 12)),
-                      trailing: Icon(Icons.arrow_forward_ios, size: 14, color: kPlaceholderColor),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: kPlaceholderColor),
                       onTap: () {
-                        // TODO: Implement navigation to relevant screen (e.g., Map for the "15 minutes away" alert)
                         Navigator.pop(context);
                       },
                       contentPadding: EdgeInsets.zero,
@@ -278,8 +252,6 @@ class CitizenDashboard extends StatelessWidget {
     );
   }
 
-
-  // Helper function to build professional-looking dashboard cards
   Widget _buildDashboardCard(BuildContext context, {required IconData icon, required String title, required VoidCallback onTap}) {
     return InkWell(
       onTap: onTap,
@@ -307,13 +279,10 @@ class CitizenDashboard extends StatelessWidget {
   
   // Helper function for small stat cards
   Widget _buildStatCard(String title, String value, Color defaultColor) {
-    // 1. Logic to determine status color based on weight for Dry/Wet/Mixed waste
     Color contentColor = defaultColor;
     Color boxColor = defaultColor.withOpacity(0.1);
 
-    // Only apply weight logic to waste types
     if (title.contains('Waste')) {
-      // Safely parse the value string (e.g., '12.5 kg' -> 12.5)
       double? weight;
       try {
         String numericPart = value.split(' ')[0];
@@ -324,21 +293,17 @@ class CitizenDashboard extends StatelessWidget {
 
       if (weight != null) {
         if (weight <= 10.0) {
-          // Less than or equal to 10 kg -> MILD RARE GREEN
           contentColor = Colors.green.shade700; 
           boxColor = Colors.green.shade100;
         } else if (weight >= 20.0) {
-          // More than or equal to 20 kg -> MILD RARE RED
           contentColor = Colors.red.shade700; 
           boxColor = Colors.red.shade100;
         } else {
-          // Otherwise (10.0 < weight < 20.0) -> MILD RARE BLUE
           contentColor = Colors.blue.shade700; 
           boxColor = Colors.blue.shade100;
         }
       }
     } else {
-      // For non-weight stats (Total Collections, Compliance Rating), set background to White and text to kPrimaryColor
       boxColor = Colors.white; 
       contentColor = kPrimaryColor;
     }
@@ -346,7 +311,7 @@ class CitizenDashboard extends StatelessWidget {
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      color: boxColor, // Conditional background color
+      color: boxColor, 
       child: Padding(
         padding: const EdgeInsets.all(12.0),
         child: Column(
@@ -354,7 +319,7 @@ class CitizenDashboard extends StatelessWidget {
           children: [
             Text(title, style: TextStyle(fontSize: 12, color: contentColor, fontWeight: FontWeight.w600)),
             const SizedBox(height: 4),
-            Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: contentColor)), // Conditional content color
+            Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: contentColor)),
           ],
         ),
       ),
@@ -367,11 +332,11 @@ class CitizenDashboard extends StatelessWidget {
       appBar: AppBar(
         title: const Text('My Waste Manager'),
         backgroundColor: kPrimaryColor,
-        elevation: 0, // Make the app bar flat
+        elevation: 0, 
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications_none, color: Colors.white),
-            onPressed: () => _showNotificationModal(context), // Link to the new modal
+            onPressed: () => _showNotificationModal(context), 
           ),
           const SizedBox(width: 8),
         ],
@@ -406,7 +371,7 @@ class CitizenDashboard extends StatelessWidget {
               title: const Text('My Collection QR Code'),
               onTap: () {
                 Navigator.pop(context); 
-                _showQrCodeModal(context); // Show modal from the drawer
+                _showQrCodeModal(context); 
               },
             ),
             ListTile(
@@ -414,8 +379,8 @@ class CitizenDashboard extends StatelessWidget {
               title: const Text('Collection History & Weighment'),
               onTap: () {
                 Navigator.pop(context);
-                // Navigate to the Calendar/History screen
-                Navigator.of(context).push(_createSlideUpRoute(const CalendarScreen()));
+                // GoRouter Navigation
+                context.go(AppRoutePaths.citizenHistory);
               },
             ),
             ListTile(
@@ -423,8 +388,8 @@ class CitizenDashboard extends StatelessWidget {
               title: const Text('Track My Waste'),
               onTap: () {
                 Navigator.pop(context);
-                // Navigate to the Track Waste page
-                Navigator.of(context).push(_createSlideUpRoute(const TrackWasteScreen()));
+                // GoRouter Navigation
+                context.go(AppRoutePaths.citizenTrack);
               },
             ),
             ListTile(
@@ -432,7 +397,7 @@ class CitizenDashboard extends StatelessWidget {
               title: const Text('Rate Last Collection'),
               onTap: () {
                 Navigator.pop(context);
-                // TODO: Implement navigation to Rating screen (Feedback Collection)
+                // TODO: GoRouter Navigation to Rating screen 
               },
             ),
             ListTile(
@@ -440,7 +405,7 @@ class CitizenDashboard extends StatelessWidget {
               title: const Text('View Charges & Fines'),
               onTap: () {
                 Navigator.pop(context);
-                // TODO: Implement navigation to Fines/Charges screen
+                // TODO: GoRouter Navigation to Fines/Charges screen
               },
             ),
             const Divider(),
@@ -449,7 +414,7 @@ class CitizenDashboard extends StatelessWidget {
               title: const Text('Raise Grievance (Help Desk)'),
               onTap: () {
                 Navigator.pop(context);
-                // TODO: Implement navigation to Grievance Redressal
+                // TODO: GoRouter Navigation to Grievance Redressal
               },
             ),
             const Divider(),
@@ -458,7 +423,9 @@ class CitizenDashboard extends StatelessWidget {
               title: const Text('Logout', style: TextStyle(color: Colors.red)),
               onTap: () {
                 Navigator.pop(context);
-                // TODO: Implement actual logout and navigate back to LoginScreen
+                // **BLOC INTEGRATION: Dispatch Logout Event**
+                context.read<AuthBloc>().add(AuthLogoutRequested());
+                // GoRouter's redirect logic will handle the navigation back to /login
               },
             ),
           ],
@@ -485,9 +452,10 @@ class CitizenDashboard extends StatelessWidget {
             Card(
               elevation: 4,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              child: InkWell( // <-- InkWell makes the card tappable
+              child: InkWell( 
                 onTap: () {
-                  Navigator.of(context).push(_createSlideUpRoute(const DriverDetailsScreen()));
+                  // GoRouter Navigation to Driver Details
+                  context.go(AppRoutePaths.citizenDriverDetails);
                 },
                 child: ListTile(
                   leading: const Icon(Icons.schedule, size: 40, color: kPrimaryColor),
@@ -517,13 +485,13 @@ class CitizenDashboard extends StatelessWidget {
               crossAxisSpacing: 16,
               mainAxisSpacing: 16,
               children: <Widget>[
-                // Card 1: QR Code Access (Linked to new modal)
+                // Card 1: QR Code Access
                 _buildDashboardCard(
                   context,
                   icon: Icons.qr_code_2,
                   title: 'My QR Code',
                   onTap: () {
-                    _showQrCodeModal(context); // Calls the smooth QR modal
+                    _showQrCodeModal(context); 
                   },
                 ),
                 // Card 2: Collection History
@@ -532,8 +500,8 @@ class CitizenDashboard extends StatelessWidget {
                   icon: Icons.history,
                   title: 'Collection History',
                   onTap: () {
-                    // Navigate to Calendar/History screen
-                    Navigator.of(context).push(_createSlideUpRoute(const CalendarScreen()));
+                    // GoRouter Navigation
+                    context.go(AppRoutePaths.citizenHistory);
                   },
                 ),
                 // Card 3: Raise Grievance
@@ -542,7 +510,7 @@ class CitizenDashboard extends StatelessWidget {
                   icon: Icons.feedback_outlined,
                   title: 'Raise Grievance',
                   onTap: () {
-                    // TODO: Navigate to Grievance Redressal
+                    // TODO: GoRouter Navigation to Grievance Redressal
                   },
                 ),
                 // Card 4: Rate Service
@@ -551,7 +519,7 @@ class CitizenDashboard extends StatelessWidget {
                   icon: Icons.star_rate_outlined,
                   title: 'Rate Collector',
                   onTap: () {
-                    // TODO: Navigate to Rating screen
+                    // TODO: GoRouter Navigation to Rating screen
                   },
                 ),
               ],

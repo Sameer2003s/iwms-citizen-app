@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:async';
-import 'login.dart'; // Navigate to LoginScreen next
-import '../main.dart'; // Accesses shared constants, createSlideUpRoute
+
+// Layered imports
+import '../../core/constants.dart';
+import '../../logic/auth/auth_bloc.dart';
+import '../../logic/auth/auth_event.dart'; 
+import '../../logic/auth/auth_state.dart'; 
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -17,8 +22,9 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   late final Animation<double> _scaleAnimation;
   final Duration _popDuration = const Duration(milliseconds: 700);
 
+  final Duration _minDisplayDuration = const Duration(seconds: 2, milliseconds: 500); 
+
   Widget _imageAsset(String fileName, {required double width, required double height}) {
-    // Placeholder image asset function for zigma and blueplanet
     return Image.asset(
       'assets/images/$fileName',
       width: width,
@@ -30,6 +36,18 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   @override
   void initState() {
     super.initState();
+    
+    final AuthBloc authBloc = context.read<AuthBloc>();
+
+    // 1. Start the minimum time future
+    final minTimeFuture = Future.delayed(_minDisplayDuration);
+
+    // 2. Wait for BOTH the minimum time AND the auth bloc's internal initialization to complete
+    // CRITICAL FIX: Using the public 'initialization' getter
+    Future.wait([authBloc.initialization, minTimeFuture]).then((_) {
+      // Once both are done, dispatch the final AuthStatusChecked event
+      authBloc.add(AuthStatusChecked());
+    });
     
     _bottomAnimationController = AnimationController(
       vsync: this,
@@ -65,21 +83,17 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
         _bottomAnimationController.forward();
       }
     });
-
-    _navigateToNextScreen();
   }
 
-  void _navigateToNextScreen() {
-    Timer(const Duration(seconds: 4), () {
-      if (mounted) {
-        // Use the centralized helper for smooth navigation
-        Navigator.of(context).pushReplacement(
-          createSlideUpRoute(const LoginScreen()),
-        );
-      }
-    });
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Pre-cache all important images for fast loading
+    precacheImage(const AssetImage('assets/images/logo.png'), context);
+    precacheImage(const AssetImage('assets/images/zigma.png'), context);
+    precacheImage(const AssetImage('assets/images/blueplanet.png'), context);
   }
-
+  
   @override
   void dispose() {
     _bottomAnimationController.dispose();
@@ -88,10 +102,6 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   
   @override
   Widget build(BuildContext context) {
-    // Accessing kPrimaryColor indirectly via context for the text color if needed, 
-    // but preserving the original black for maximum contrast on white background.
-    final accentColor = kTextColor; 
-
     return Scaffold(
       backgroundColor: Colors.white, 
       body: SafeArea(
@@ -100,37 +110,33 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
           children: [
             const Spacer(flex: 2),
             
-            // --- MAIN LOGO AND TEXT SECTION (Fades in over 3s) ---
+            // --- MAIN LOGO AND TEXT SECTION ---
             AnimatedOpacity(
               opacity: _opacity, 
               duration: const Duration(seconds: 3), 
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Image.asset(
-                    'assets/images/logo.png', 
-                    width: 120, 
-                    height: 120, 
-                  ),
+                  _imageAsset('logo.png', width: 120, height: 120),
                   const SizedBox(height: 20), 
                   
-                  Text(
+                  const Text(
                     "Integrated Waste",
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 20, 
                       fontWeight: FontWeight.w800, 
-                      color: accentColor, 
+                      color: kTextColor, 
                     ),
                   ),
                   
-                  Text(
+                  const Text(
                     "Management Suite",
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 20, 
                       fontWeight: FontWeight.w800,
-                      color: accentColor,
+                      color: kTextColor,
                     ),
                   ),
                 ],
@@ -139,7 +145,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
             
             const Spacer(flex: 3),
             
-            // --- BOTTOM SECTION ANIMATION (Fades/Slides/Scales in over 0.7s) ---
+            // --- BOTTOM SECTION ANIMATION ---
             FadeTransition( 
               opacity: Tween<double>(begin: 0.0, end: 1.0).animate(_bottomAnimationController),
               child: SlideTransition(

@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
-import 'home.dart'; // Navigate to HomeScreen after registration
-import '../main.dart'; // Accesses shared constants, createSlideUpRoute
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+// Layered imports
+import '../../core/constants.dart';
+import '../../logic/auth/auth_bloc.dart';
+import '../../logic/auth/auth_event.dart';
 
 // Dropdown items for property type, as suggested in the planning
 enum PropertyType { house, apartment, office, commercial, other }
@@ -18,36 +22,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _addressController = TextEditingController();
   PropertyType? _selectedPropertyType;
 
-  // Reusable custom slide-up transition function (imported from main.dart)
-  Route _createRoute(Widget targetPage) {
-    return PageRouteBuilder(
-      transitionDuration: const Duration(milliseconds: 500),
-      pageBuilder: (context, animation, secondaryAnimation) => targetPage,
-      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-        const begin = Offset(0.0, 1.0);
-        const end = Offset.zero;
-        const curve = Curves.easeOut;
-
-        var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-
-        return SlideTransition(
-          position: animation.drive(tween),
-          child: child,
-        );
-      },
-    );
-  }
-
   void _handleRegistration(BuildContext context) {
-    final userName = _nameController.text.trim(); // Capture and trim the user's name
+    final userName = _nameController.text.trim(); 
 
     if (userName.isNotEmpty && _addressController.text.isNotEmpty) {
-      // Successful registration, navigate to Home (Dashboard) using custom transition
-      // PASSING THE CAPTURED userName TO HOMESCREEN
-      Navigator.of(context).pushAndRemoveUntil(
-        _createRoute(HomeScreen(userName: userName)),
-        (Route<dynamic> route) => false, 
+      
+      // Simulate successful registration and automatically log the user in.
+      // 1. Dispatch the Login Event (AuthBloc handles API call and state change)
+      context.read<AuthBloc>().add(
+        AuthLoginRequested(
+          mobileNumber: '9999999999', // Mock mobile number for this registration
+          otp: '1234', 
+        ),
       );
+      
+      // 2. The AuthBlocListener in login.dart (or the global router redirect)
+      // will handle the navigation to AppRoutePaths.citizenDashboard.
+      
+      // Show confirmation message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Registration successful! Redirecting to dashboard...'),
+          backgroundColor: kPrimaryColor,
+        ),
+      );
+      
     } else {
       // Simple error message for demo
       ScaffoldMessenger.of(context).showSnackBar(
@@ -106,11 +105,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         title: const Text('New User Registration'),
         backgroundColor: kPrimaryColor,
         elevation: 0,
-        // Add a back button for navigation from login
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+        // GoRouter handles the back button automatically for popping from the stack
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -142,7 +137,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               
               const SizedBox(height: 10),
 
-              // 3. Property Type (Crucial for IWMS logistics)
+              // 3. Property Type 
               _buildLabel("Property Type"),
               Container(
                 decoration: BoxDecoration(
@@ -154,7 +149,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   isExpanded: true,
                   decoration: const InputDecoration(
                     hintText: "Select your property type",
-                    border: InputBorder.none, // Remove default border since container has one
+                    border: InputBorder.none, 
                     contentPadding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
                   ),
                   initialValue: _selectedPropertyType,

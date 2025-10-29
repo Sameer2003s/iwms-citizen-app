@@ -1,4 +1,4 @@
-name: user_login
+name: iwms_citizen_app
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -35,6 +35,17 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
+  go_router: ^16.3.0
+  flutter_bloc: ^9.1.1
+  dio: ^5.9.0
+  drift: ^2.29.0
+  sqlite3_flutter_libs: ^0.5.40
+  get_it: ^8.2.0
+  equatable: ^2.0.7
+  path_provider: ^2.1.5
+  flutter_map: ^6.1.0
+  latlong2: ^0.9.1
+  
 
 dev_dependencies:
   flutter_test:

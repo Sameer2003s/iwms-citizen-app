@@ -1,0 +1,352 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart'; 
+
+// Layered Imports
+import 'package:iwms_citizen_app/core/constants.dart';
+import 'package:iwms_citizen_app/core/di.dart';
+import 'package:iwms_citizen_app/logic/vehicle_tracking/vehicle_cubit.dart';
+import 'package:iwms_citizen_app/data/models/vehicle_model.dart'; 
+
+
+class MapScreen extends StatelessWidget {
+  final String? driverName;
+  final String? vehicleNumber;
+
+  const MapScreen({
+    super.key,
+    this.driverName,
+    this.vehicleNumber,
+  });
+
+  static const LatLng _initialCenter = LatLng(20.5937, 78.9629); 
+
+  // --- Utility Helpers ---
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'Running':
+        return Colors.green.shade700;
+      case 'Idle':
+        return Colors.orange.shade700;
+      case 'Parked':
+        return Colors.blueGrey;
+      case 'No Data':
+      case 'Maintenance':
+        return Colors.red;
+      default:
+        return kPlaceholderColor;
+    }
+  }
+
+  int _countStatus(List<VehicleModel> vehicles, String status) {
+    return vehicles.where((v) => v.status == status).length;
+  }
+
+  Widget _detailRow(IconData icon, String label, String value, Color color) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: color),
+          const SizedBox(width: 8),
+          Text(label, style: const TextStyle(fontWeight: FontWeight.w500, color: kTextColor)),
+          const Spacer(),
+          Text(value, style: TextStyle(color: color, fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+
+  // --- Filter Bar and List UI ---
+
+  Widget _buildFilterChip(BuildContext context, VehicleFilter filter, VehicleLoaded loadedState) {
+    final isSelected = loadedState.activeFilter == filter;
+    
+    // Determine status string for counting and display
+    String statusKey;
+    switch (filter) {
+      case VehicleFilter.all:
+        statusKey = 'All';
+        break;
+      case VehicleFilter.running:
+        statusKey = 'Running';
+        break;
+      case VehicleFilter.idle:
+        statusKey = 'Idle';
+        break;
+      case VehicleFilter.parked:
+        statusKey = 'Parked';
+        break;
+      case VehicleFilter.noData:
+        statusKey = 'No Data'; // Using No Data for grouping statuses like maintenance/no data
+        break;
+    }
+    
+    final count = filter == VehicleFilter.all 
+        ? loadedState.vehicles.length 
+        : _countStatus(loadedState.vehicles, statusKey);
+
+    final color = _getStatusColor(statusKey);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4.0),
+      child: ActionChip(
+        avatar: isSelected ? Icon(Icons.check, size: 18, color: Colors.white) : null,
+        label: Text(
+          '$statusKey ($count)', 
+          style: TextStyle(
+            color: isSelected ? Colors.white : color, 
+            fontWeight: FontWeight.bold, 
+            fontSize: 13
+          )
+        ),
+        backgroundColor: isSelected ? color : Colors.white,
+        side: BorderSide(color: color, width: 1.5),
+        onPressed: () {
+          // Toggle filter: if already selected, switch to 'all'
+          final newFilter = isSelected ? VehicleFilter.all : filter;
+          context.read<VehicleCubit>().filterVehicles(newFilter);
+        },
+      ),
+    );
+  }
+
+  Widget _buildVehicleListModal(BuildContext context, List<VehicleModel> vehicles) {
+    final loadedState = context.read<VehicleCubit>().state as VehicleLoaded;
+    
+    // We filter the list again here to ensure it respects the active filter
+    final filteredList = vehicles.where((v) {
+      if (loadedState.activeFilter == VehicleFilter.all) return true;
+      final statusKey = loadedState.activeFilter.name[0].toUpperCase() + loadedState.activeFilter.name.substring(1);
+      return v.status == statusKey;
+    }).toList();
+
+
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.6,
+      padding: const EdgeInsets.only(top: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Text(
+              'Filtered Vehicles (${filteredList.length})',
+              style: Theme.of(context).textTheme.titleLarge!.copyWith(fontSize: 20, fontWeight: FontWeight.bold, color: kTextColor),
+            ),
+          ),
+          const Divider(height: 20),
+          Expanded(
+            child: ListView.builder(
+              itemCount: filteredList.length,
+              itemBuilder: (context, index) {
+                final vehicle = filteredList[index];
+                final isSelected = loadedState.selectedVehicle?.id == vehicle.id;
+                
+                return _buildVehicleTile(context, vehicle, isSelected);
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildVehicleTile(BuildContext context, VehicleModel vehicle, bool isSelected) {
+    final statusColor = _getStatusColor(vehicle.status);
+
+    return InkWell(
+      onTap: () {
+        // Select the vehicle and close the modal
+        context.read<VehicleCubit>().selectVehicle(vehicle.id);
+        Navigator.pop(context); 
+      },
+      child: Container(
+        padding: const EdgeInsets.all(12.0),
+        margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+        decoration: BoxDecoration(
+          color: isSelected ? kPrimaryColor.withOpacity(0.1) : Colors.white,
+          borderRadius: BorderRadius.circular(8.0),
+          border: Border.all(color: isSelected ? kPrimaryColor : kBorderColor),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(vehicle.registrationNumber, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: statusColor,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(vehicle.status, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text('Driver: ${vehicle.driverName}', style: const TextStyle(fontSize: 14, color: kPlaceholderColor)),
+            Text('Load: ${vehicle.wasteCapacityKg} kg', style: TextStyle(fontSize: 14, color: kTextColor.withOpacity(0.8))),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Vehicle Details Card (Floating overlay for the map)
+  Widget _buildDetailsCard(BuildContext context, VehicleModel vehicle) {
+    return Container(
+      padding: const EdgeInsets.all(16.0),
+      margin: const EdgeInsets.only(bottom: 20, left: 20, right: 20), 
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.all(Radius.circular(16)),
+        boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 10)],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Details: ${vehicle.registrationNumber}', style: Theme.of(context).textTheme.titleLarge!.copyWith(fontSize: 22, color: kPrimaryColor)),
+              IconButton(
+                icon: const Icon(Icons.close, color: kPlaceholderColor),
+                onPressed: () => context.read<VehicleCubit>().selectVehicle(null),
+              ),
+            ],
+          ),
+          const Divider(),
+          _detailRow(Icons.person, 'Driver:', vehicle.driverName, kTextColor),
+          _detailRow(Icons.pin_drop_outlined, 'Status:', vehicle.status, _getStatusColor(vehicle.status)),
+          _detailRow(Icons.speed, 'Load:', '${vehicle.wasteCapacityKg} kg', Colors.blue),
+        ],
+      ),
+    );
+  }
+
+
+  // --- Main Widget ---
+  @override
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (context) => getIt<VehicleCubit>()..fetchVehicles(),
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Live Vehicle Monitoring'),
+          backgroundColor: kPrimaryColor,
+        ),
+        body: BlocBuilder<VehicleCubit, VehicleState>(
+          builder: (context, state) {
+            if (state is VehicleLoading) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (state is VehicleError) {
+              return Center(child: Text('Error: ${state.message}', style: const TextStyle(color: Colors.red)));
+            }
+
+            final loadedState = state is VehicleLoaded ? state : null;
+            if (loadedState == null) {
+              return const Center(child: Text('Map data is unavailable.', style: TextStyle(color: kPlaceholderColor)));
+            }
+            
+            // --- Vehicle Filtering for Markers ---
+            final visibleMarkers = loadedState.markers.where((m) {
+              if (loadedState.activeFilter == VehicleFilter.all) return true;
+              
+              // Find the corresponding vehicle to check its status against the active filter
+              final statusFilter = loadedState.activeFilter.name[0].toUpperCase() + loadedState.activeFilter.name.substring(1);
+              final vehicle = loadedState.vehicles.firstWhere((v) => 
+                  v.latitude == m.point.latitude && v.longitude == m.point.longitude, 
+                  orElse: () => loadedState.vehicles.first); // Safest fallback
+                  
+              return vehicle.status == statusFilter;
+            }).toList();
+
+            // --- Full Screen Map Layout ---
+            return Stack(
+              children: [
+                // 1. Map Widget (Background)
+                FlutterMap(
+                  options: MapOptions(
+                    initialCenter: _initialCenter,
+                    initialZoom: 5.5, 
+                    onTap: (tapPosition, point) {
+                        context.read<VehicleCubit>().selectVehicle(null); // Clear selection on map tap
+                    },
+                  ),
+                  children: [
+                    TileLayer(
+                      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      userAgentPackageName: 'com.example.iwms_citizen_app',
+                    ),
+                    MarkerLayer(markers: visibleMarkers),
+                  ],
+                ),
+                
+                // 2. Filter Bar (Pinned to the top)
+                Positioned(
+                  top: 10,
+                  left: 10,
+                  right: 10,
+                  child: Card(
+                    elevation: 4,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                        child: Row(
+                          children: VehicleFilter.values.map((filter) {
+                            return _buildFilterChip(context, filter, loadedState);
+                          }).toList(),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                
+                // 3. Floating Vehicle Details Card (Bottom Overlay)
+                if (loadedState.selectedVehicle != null)
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: _buildDetailsCard(context, loadedState.selectedVehicle!),
+                  ),
+              ],
+            );
+          },
+        ),
+        // 4. Floating Action Button (FAB) to open the Vehicle List Modal
+        floatingActionButton: BlocBuilder<VehicleCubit, VehicleState>(
+          builder: (context, state) {
+            if (state is VehicleLoaded) {
+              return FloatingActionButton.extended(
+                onPressed: () {
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                    ),
+                    builder: (_) => _buildVehicleListModal(context, state.vehicles),
+                  );
+                },
+                label: Text('Vehicle List (${state.vehicles.length})', style: const TextStyle(color: Colors.white)),
+                icon: const Icon(Icons.list, color: Colors.white),
+                backgroundColor: Colors.blue.shade700, // Replaced kAccentBlue
+              );
+            }
+            return Container(); // Hide FAB while loading/error
+          },
+        ),
+      ),
+    );
+  }
+}

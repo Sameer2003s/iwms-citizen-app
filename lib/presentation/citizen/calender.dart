@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../main.dart'; // Accesses shared constants
+// Layered imports
+import '../../core/constants.dart'; 
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -114,7 +115,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Image of Collected Waste (Uses new assets)
+                // Image of Collected Waste 
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8.0),
                   child: Image.asset(
