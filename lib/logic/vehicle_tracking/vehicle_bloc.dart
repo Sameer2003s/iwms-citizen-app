@@ -1,13 +1,13 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
-import 'package:flutter/material.dart'; 
+import 'package:flutter/material.dart';
 // FIX: Import Events (defines VehicleEvent, VehicleFetchRequested, etc.)
-import 'vehicle_event.dart'; 
+import 'vehicle_event.dart';
 import '../../data/models/vehicle_model.dart';
 import '../../data/repositories/vehicle_repository.dart';
 // FIX: Import constants (defines VehicleFilter enum)
-import '../../core/constants.dart'; 
+import '../../core/constants.dart';
 
 // --- STATE DEFINITIONS ---
 
@@ -19,8 +19,12 @@ abstract class VehicleState extends Equatable {
 }
 
 // FIX: Added 'const' to constructors
-class VehicleInitial extends VehicleState { const VehicleInitial(); }
+class VehicleInitial extends VehicleState {
+  const VehicleInitial();
+}
+
 class VehicleLoading extends VehicleState {}
+
 class VehicleError extends VehicleState {
   final String message;
   const VehicleError(this.message);
@@ -31,24 +35,27 @@ class VehicleError extends VehicleState {
 class VehicleLoaded extends VehicleState {
   final List<VehicleModel> vehicles;
   final VehicleModel? selectedVehicle;
-  final VehicleFilter activeFilter; 
+  final VehicleFilter activeFilter;
 
-  const VehicleLoaded(this.vehicles, {
+  const VehicleLoaded(
+    this.vehicles, {
     this.selectedVehicle,
     this.activeFilter = VehicleFilter.all,
   });
 
   @override
-  List<Object?> get props => [vehicles, selectedVehicle, activeFilter]; 
+  List<Object?> get props => [vehicles, selectedVehicle, activeFilter];
 
   VehicleLoaded copyWith({
     VehicleModel? selectedVehicle,
     VehicleFilter? activeFilter,
     List<VehicleModel>? vehicles,
+    // Helper to deselect vehicle by passing null explicitly
+    bool forceDeselect = false,
   }) {
     return VehicleLoaded(
       vehicles ?? this.vehicles,
-      selectedVehicle: selectedVehicle,
+      selectedVehicle: forceDeselect ? null : selectedVehicle ?? this.selectedVehicle,
       activeFilter: activeFilter ?? this.activeFilter,
     );
   }
@@ -62,29 +69,24 @@ class VehicleBloc extends Bloc<VehicleEvent, VehicleState> {
   static const int refreshIntervalSeconds = 15; // Auto-refresh interval
 
   // FIX: Now this line is valid because VehicleInitial is const.
-  VehicleBloc(this._repository) : super(const VehicleInitial()) { 
+  VehicleBloc(this._repository) : super(const VehicleInitial()) {
     // 1. Event Mappings
     on<VehicleFetchRequested>(_onFetchRequested);
     on<VehicleFilterUpdated>(_onFilterUpdated);
     on<VehicleSelectionUpdated>(_onSelectionUpdated);
-    
+
     _startAutoRefresh();
-  }
-  
-  // 🟢 FIX: New helper to check status aliases (Moving Vehicle maps to running)
-  bool _isVehicleRunning(VehicleModel v) {
-    final status = (v.status ?? '').toLowerCase();
-    return status == 'running' || status == 'moving vehicle';
   }
 
   // --- Core Fetch Logic ---
-  Future<void> _fetchAndEmitVehicles(Emitter<VehicleState> emit, {bool showLoading = true}) async {
+  Future<void> _fetchAndEmitVehicles(Emitter<VehicleState> emit,
+      {bool showLoading = true}) async {
     if (showLoading && state is! VehicleLoaded) {
       emit(VehicleLoading());
     }
     try {
       final vehicleList = await _repository.fetchAllVehicleLocations();
-      
+
       // Preserve existing filter and selection if already loaded
       final currentState = state is VehicleLoaded ? state as VehicleLoaded : null;
 
@@ -96,73 +98,87 @@ class VehicleBloc extends Bloc<VehicleEvent, VehicleState> {
     } catch (e) {
       if (state is VehicleLoaded) {
         // Keep existing data on failure to prevent flicker (silent fail)
+        // ignore: avoid_print
         print("Auto-refresh failed: $e. Keeping existing map data.");
       } else {
-        emit(VehicleError("Failed to fetch vehicle locations."));
+        emit(const VehicleError("Failed to fetch vehicle locations."));
       }
     }
   }
 
   // --- Event Handlers ---
 
-  void _onFetchRequested(VehicleFetchRequested event, Emitter<VehicleState> emit) async {
+  void _onFetchRequested(
+      VehicleFetchRequested event, Emitter<VehicleState> emit) async {
     // For manual fetch, we show loading screen if not already loaded
     await _fetchAndEmitVehicles(emit, showLoading: true);
   }
 
-  void _onFilterUpdated(VehicleFilterUpdated event, Emitter<VehicleState> emit) {
+  void _onFilterUpdated(
+      VehicleFilterUpdated event, Emitter<VehicleState> emit) {
     if (state is VehicleLoaded) {
       final loadedState = state as VehicleLoaded;
       if (loadedState.activeFilter != event.filter) {
-        emit(loadedState.copyWith(activeFilter: event.filter, selectedVehicle: null)); 
+        // When filter changes, deselect the vehicle
+        emit(loadedState.copyWith(
+            activeFilter: event.filter, forceDeselect: true));
       }
     }
   }
 
-  void _onSelectionUpdated(VehicleSelectionUpdated event, Emitter<VehicleState> emit) {
+  void _onSelectionUpdated(
+      VehicleSelectionUpdated event, Emitter<VehicleState> emit) {
     if (state is! VehicleLoaded) return;
-    
+
     final loadedState = state as VehicleLoaded;
     final vehicleId = event.vehicleId;
-    
+
     VehicleModel? selected;
     if (vehicleId != null) {
       try {
         selected = loadedState.vehicles.firstWhere((v) => v.id == vehicleId);
       } catch (e) {
-        print('Vehicle not found for ID: $vehicleId'); 
+        // ignore: avoid_print
+        print('Vehicle not found for ID: $vehicleId');
       }
     }
-    
-    emit(loadedState.copyWith(selectedVehicle: selected));
+
+    // Use copyWith to handle both selecting (selected) and deselecting (null)
+    emit(loadedState.copyWith(selectedVehicle: selected, forceDeselect: vehicleId == null));
   }
-  
+
   // --- Timer Management (Auto-refresh) ---
   void _startAutoRefresh() {
-    _timer?.cancel(); 
-    
+    _timer?.cancel();
+
     _timer = Timer.periodic(
       const Duration(seconds: refreshIntervalSeconds),
       (timer) {
-        add(VehicleFetchRequested());
+        // Only add a new fetch event if the BLoC is not already loading
+        if (state is! VehicleLoading) {
+          add(VehicleFetchRequested());
+        }
       },
     );
   }
 
-  // 🟢 FIX: Map API status words to app statuses using robust lowercase comparison.
-  Color _getStatusColor(String? status) {
+  // 🟢 START FIX: All logic below is simplified
+  
+  // Helper to check the *clean* status from the model
+  bool _isVehicleRunning(VehicleModel v) {
+    return (v.status ?? '').toLowerCase() == 'running';
+  }
+
+  // Helper to get the color for the *clean* status
+  Color getStatusColor(String? status) {
     final s = (status ?? '').toLowerCase();
-    // Use the helper for running/moving alias
-    if (_isVehicleRunning(VehicleModel(id: '', latitude: 0, longitude: 0, status: status))) {
-        return Colors.green.shade700;
-    }
-    
+
     switch (s) {
+      case 'running':
+        return Colors.green.shade700;
       case 'idle':
         return Colors.orange.shade700;
       case 'parked':
-      case 'off': // Maps "OFF" or "Parked" API status to parked color
-      case 'stopped':
         return Colors.blueGrey;
       case 'no data':
       case 'maintenance':
@@ -171,26 +187,35 @@ class VehicleBloc extends Bloc<VehicleEvent, VehicleState> {
         return kPlaceholderColor;
     }
   }
-  
-  // 🟢 FIX: New helper to get the count based on aliases for the UI
+
+  // Public helper for the UI to get counts based on *clean* data
   int countVehiclesByFilter(VehicleFilter filter) {
-      if (state is! VehicleLoaded) return 0;
-      final vehicles = (state as VehicleLoaded).vehicles;
-      
-      switch(filter) {
-          case VehicleFilter.all:
-              return vehicles.length;
-          case VehicleFilter.running:
-              // Use the helper to catch "moving vehicle"
-              return vehicles.where((v) => _isVehicleRunning(v)).length;
-          case VehicleFilter.idle:
-              return vehicles.where((v) => (v.status ?? '').toLowerCase() == 'idle').length;
-          case VehicleFilter.parked:
-              return vehicles.where((v) => (v.status ?? '').toLowerCase() == 'parked' || (v.status ?? '').toLowerCase() == 'off' || (v.status ?? '').toLowerCase() == 'stopped').length;
-          case VehicleFilter.noData:
-              return vehicles.where((v) => (v.status ?? '').toLowerCase() == 'no data').length;
-      }
+    if (state is! VehicleLoaded) return 0;
+    final vehicles = (state as VehicleLoaded).vehicles;
+
+    switch (filter) {
+      case VehicleFilter.all:
+        return vehicles.length;
+      case VehicleFilter.running:
+        // Uses the simplified helper
+        return vehicles.where(_isVehicleRunning).length;
+      case VehicleFilter.idle:
+        // No aliases needed
+        return vehicles
+            .where((v) => (v.status ?? '').toLowerCase() == 'idle')
+            .length;
+      case VehicleFilter.parked:
+        // No aliases needed
+        return vehicles
+            .where((v) => (v.status ?? '').toLowerCase() == 'parked')
+            .length;
+      case VehicleFilter.noData:
+        return vehicles
+            .where((v) => (v.status ?? '').toLowerCase() == 'no data')
+            .length;
+    }
   }
+  // 🟢 END FIX
 
   @override
   Future<void> close() {
