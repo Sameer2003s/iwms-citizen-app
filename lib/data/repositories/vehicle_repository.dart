@@ -1,51 +1,71 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart'; // For kDebugMode/print
+
+// Layered imports (These must be present in your project)
 import '../models/vehicle_model.dart';
 
 class VehicleRepository {
   final Dio dioClient;
-  // NOTE: You would use dioClient to hit your real API here.
 
-  VehicleRepository({required this.dioClient});
+  // 1. Define the actual API endpoint
+  static const String _liveLocationApi = 
+      "https://api.vamosys.com/mobile/getGrpDataForTrustedClients?providerName=ZIGMA&fcode=VAM";
 
+  VehicleRepository({
+    required this.dioClient,
+  });
+
+  // 2. Fetch data from the live API
   Future<List<VehicleModel>> fetchAllVehicleLocations() async {
-    // --- MOCK API DATA SIMULATION ---
-    // In a real app: final response = await dioClient.get('YOUR_API_LINK');
-    await Future.delayed(const Duration(milliseconds: 1000));
+    try {
+      // Perform the actual GET request using Dio
+      final Response response = await dioClient.get(_liveLocationApi);
 
-    const mockData = [
-      {
-        "id": "V001",
-        "registration_number": "TN 01 BC 1001",
-        "driver_name": "Rajesh Sharma",
-        "latitude": 13.0827, // Chennai, TN
-        "longitude": 80.2707,
-        "status": "Collecting",
-        "waste_capacity_kg": 55.5,
-        "last_updated": "5 min ago"
-      },
-      {
-        "id": "V002",
-        "registration_number": "KA 03 AD 2002",
-        "driver_name": "Priya Singh",
-        "latitude": 18.5204, // Pune, MH
-        "longitude": 73.8567,
-        "status": "Idle",
-        "waste_capacity_kg": 10.2,
-        "last_updated": "1 hour ago"
-      },
-      {
-        "id": "V003",
-        "registration_number": "DL 9C XY 3003",
-        "driver_name": "Amit Patel",
-        "latitude": 28.7041, // New Delhi
-        "longitude": 77.1025,
-        "status": "Maintenance",
-        "waste_capacity_kg": 0.0,
-        "last_updated": "3 days ago"
+      // Check for success status code
+      if (response.statusCode == 200) {
+        
+        final List<dynamic> dataList;
+        
+        // --- Robust JSON Parsing ---
+        // We assume the list of vehicles is the root data or nested under a key.
+        if (response.data is List) {
+          // Case 1: Response is a root array
+          dataList = response.data as List<dynamic>;
+        } else if (response.data is Map && response.data.containsKey('data')) {
+          // Case 2: Response is a map containing a 'data' key (or similar)
+          dataList = response.data['data'] as List<dynamic>;
+        } else if (response.data is Map) {
+          // Fallback check if a key named 'vehicles' or similar exists (adjust this if needed)
+          // For now, if it's a Map, we'll try to find the list of vehicles within it.
+          // This requires knowing the exact API structure. For safety, we rely on the list itself.
+          throw const FormatException("Unexpected API root format. Expected a List.");
+        } else {
+          throw const FormatException("Unexpected API response format.");
+        }
+
+        // Map the list of raw JSON objects to Dart VehicleModel objects
+        return dataList.map((json) => VehicleModel.fromJson(json)).toList();
+
+      } else {
+        throw DioException(
+          requestOptions: response.requestOptions,
+          response: response,
+          type: DioExceptionType.badResponse,
+          error: "API returned status code: ${response.statusCode}",
+        );
       }
-    ];
-    
-    return mockData.map((json) => VehicleModel.fromJson(json)).toList();
+    } on DioException catch (e) {
+      // Re-throw a custom exception for the Cubit to catch and display
+      if (kDebugMode) {
+        print('Network Error fetching vehicles: ${e.message}');
+      }
+      throw Exception("Network Error: Could not connect to API.");
+    } catch (e) {
+      if (kDebugMode) {
+        print('Parsing/Format Error: $e');
+      }
+      throw Exception("Failed to process vehicle data (Check VehicleModel parsing).");
+    }
   }
 }

@@ -4,16 +4,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 // Layered imports
 import '../data/repositories/auth_repository.dart';
-import '../data/repositories/vehicle_repository.dart'; // <<< ADDED VEHICLE REPO IMPORT
+import '../data/repositories/vehicle_repository.dart'; // <<< IMPORTS VEHICLE REPO
 import '../logic/auth/auth_bloc.dart';
-import '../logic/vehicle_tracking/vehicle_cubit.dart'; // <<< ADDED VEHICLE CUBIT IMPORT
+import '../logic/vehicle_tracking/vehicle_cubit.dart'; // <<< IMPORTS VEHICLE CUBIT
 
 final getIt = GetIt.instance;
 
 void setupDI() {
   // 1. SERVICES / CLIENTS 
   
-  // Register Future<SharedPreferences> for the Repository to resolve internally.
+  // Register Future<SharedPreferences> that the Repository will await internally.
   getIt.registerLazySingleton<Future<SharedPreferences>>(
     () => SharedPreferences.getInstance(),
   );
@@ -31,7 +31,7 @@ void setupDI() {
     ),
   );
   
-  // <<< CRITICAL FIX: REGISTERING VEHICLE REPOSITORY >>>
+  // Register the VehicleRepository (using Dio for API calls)
   getIt.registerLazySingleton<VehicleRepository>(
     () => VehicleRepository(
       dioClient: getIt<Dio>(),
@@ -40,17 +40,17 @@ void setupDI() {
 
   // 3. BLOCS / CUBITS 
   
-  // Register the AuthBloc
+  // Register the AuthBloc (Factory, as it holds state)
   getIt.registerFactory<AuthBloc>(
     () => AuthBloc(
       authRepository: getIt<AuthRepository>(),
     ),
   );
 
-  // <<< CRITICAL FIX: REGISTERING VEHICLE CUBIT >>>
+  // Register the VehicleCubit (Factory, as it holds map state)
   getIt.registerFactory<VehicleCubit>(
     () => VehicleCubit(
-      getIt<VehicleRepository>(), // Pass the newly registered repository
+      getIt<VehicleRepository>(), 
     ),
   );
 }

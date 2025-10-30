@@ -1,13 +1,93 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart'; 
+import 'package:latlong2/latlong.dart' as geo; 
+import 'dart:ui'; // Explicitly used for Path, Canvas
 
-// Layered Imports
+// Layered Imports (Using absolute paths for guaranteed resolution)
 import 'package:iwms_citizen_app/core/constants.dart';
 import 'package:iwms_citizen_app/core/di.dart';
-import 'package:iwms_citizen_app/logic/vehicle_tracking/vehicle_cubit.dart';
+import 'package:iwms_citizen_app/logic/vehicle_tracking/vehicle_cubit.dart'; 
 import 'package:iwms_citizen_app/data/models/vehicle_model.dart'; 
+
+
+// --- 1. CUSTOM MARKER WIDGET (The stylized pin) ---
+class VehicleMarkerWidget extends StatelessWidget {
+  final Color color;
+  final bool isSelected;
+  final String vehicleId;
+  final Function(String?) onTap;
+
+  const VehicleMarkerWidget({
+    super.key,
+    required this.color,
+    required this.isSelected,
+    required this.vehicleId,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => onTap(vehicleId),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: isSelected ? Colors.yellow.shade200 : Colors.white,
+                width: 3,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black38,
+                  blurRadius: isSelected ? 10 : 5,
+                  spreadRadius: isSelected ? 2 : 0,
+                ),
+              ],
+            ),
+            child: const Icon(
+              Icons.local_shipping_outlined, // Truck icon
+              color: Colors.white,
+              size: 20,
+            ),
+          ),
+          // Pin Pointer (Small triangle pointing down)
+          CustomPaint(
+            size: const Size(10, 10),
+            painter: PinPointerPainter(color: color),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// 2. Custom Painter to draw the bottom pin triangle
+class PinPointerPainter extends CustomPainter {
+  final Color color;
+  PinPointerPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = color;
+    final path = Path(); 
+    path.moveTo(size.width / 2, size.height);
+    path.lineTo(0, 0);
+    path.lineTo(size.width, 0);
+    path.close();
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant PinPointerPainter oldDelegate) => false;
+}
+// --- END CUSTOM MARKER WIDGETS ---
 
 
 class MapScreen extends StatelessWidget {
@@ -20,19 +100,21 @@ class MapScreen extends StatelessWidget {
     this.vehicleNumber,
   });
 
-  static const LatLng _initialCenter = LatLng(20.5937, 78.9629); 
+  static const geo.LatLng _initialCenter = geo.LatLng(20.5937, 78.9629); 
 
   // --- Utility Helpers ---
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case 'Running':
+  Color _getStatusColor(String? status) {
+    // FIX: Safely handles null status passed from the model
+    final s = (status ?? '').toLowerCase();
+    switch (s) {
+      case 'running':
         return Colors.green.shade700;
-      case 'Idle':
+      case 'idle':
         return Colors.orange.shade700;
-      case 'Parked':
+      case 'parked':
         return Colors.blueGrey;
-      case 'No Data':
-      case 'Maintenance':
+      case 'no data':
+      case 'maintenance':
         return Colors.red;
       default:
         return kPlaceholderColor;
@@ -40,7 +122,8 @@ class MapScreen extends StatelessWidget {
   }
 
   int _countStatus(List<VehicleModel> vehicles, String status) {
-    return vehicles.where((v) => v.status == status).length;
+    // Safely filters by coalescing vehicle status to 'N/A' if null
+    return vehicles.where((v) => (v.status ?? 'N/A') == status).length;
   }
 
   Widget _detailRow(IconData icon, String label, String value, Color color) {
@@ -58,12 +141,9 @@ class MapScreen extends StatelessWidget {
     );
   }
 
-  // --- Filter Bar and List UI ---
-
   Widget _buildFilterChip(BuildContext context, VehicleFilter filter, VehicleLoaded loadedState) {
     final isSelected = loadedState.activeFilter == filter;
     
-    // Determine status string for counting and display
     String statusKey;
     switch (filter) {
       case VehicleFilter.all:
@@ -79,7 +159,10 @@ class MapScreen extends StatelessWidget {
         statusKey = 'Parked';
         break;
       case VehicleFilter.noData:
-        statusKey = 'No Data'; // Using No Data for grouping statuses like maintenance/no data
+        statusKey = 'No Data'; 
+        break;
+      default:
+        statusKey = 'All';
         break;
     }
     
@@ -87,7 +170,7 @@ class MapScreen extends StatelessWidget {
         ? loadedState.vehicles.length 
         : _countStatus(loadedState.vehicles, statusKey);
 
-    final color = _getStatusColor(statusKey);
+    final color = _getStatusColor(statusKey); 
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4.0),
@@ -104,7 +187,6 @@ class MapScreen extends StatelessWidget {
         backgroundColor: isSelected ? color : Colors.white,
         side: BorderSide(color: color, width: 1.5),
         onPressed: () {
-          // Toggle filter: if already selected, switch to 'all'
           final newFilter = isSelected ? VehicleFilter.all : filter;
           context.read<VehicleCubit>().filterVehicles(newFilter);
         },
@@ -115,11 +197,11 @@ class MapScreen extends StatelessWidget {
   Widget _buildVehicleListModal(BuildContext context, List<VehicleModel> vehicles) {
     final loadedState = context.read<VehicleCubit>().state as VehicleLoaded;
     
-    // We filter the list again here to ensure it respects the active filter
     final filteredList = vehicles.where((v) {
       if (loadedState.activeFilter == VehicleFilter.all) return true;
+      final vehicleStatus = v.status ?? 'No Data'; 
       final statusKey = loadedState.activeFilter.name[0].toUpperCase() + loadedState.activeFilter.name.substring(1);
-      return v.status == statusKey;
+      return vehicleStatus == statusKey;
     }).toList();
 
 
@@ -154,11 +236,16 @@ class MapScreen extends StatelessWidget {
   }
   
   Widget _buildVehicleTile(BuildContext context, VehicleModel vehicle, bool isSelected) {
-    final statusColor = _getStatusColor(vehicle.status);
+    final statusColor = _getStatusColor(vehicle.status); 
+
+    final regNo = vehicle.registrationNumber ?? 'N/A';
+    final driver = vehicle.driverName ?? 'Driver Unknown';
+    final statusText = vehicle.status ?? 'No Data';
+    final load = vehicle.wasteCapacityKg?.toStringAsFixed(1) ?? '0.0';
+
 
     return InkWell(
       onTap: () {
-        // Select the vehicle and close the modal
         context.read<VehicleCubit>().selectVehicle(vehicle.id);
         Navigator.pop(context); 
       },
@@ -176,28 +263,33 @@ class MapScreen extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(vehicle.registrationNumber, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                Text(regNo, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
                     color: statusColor,
                     borderRadius: BorderRadius.circular(4),
                   ),
-                  child: Text(vehicle.status, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                  child: Text(statusText, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
             const SizedBox(height: 8),
-            Text('Driver: ${vehicle.driverName}', style: const TextStyle(fontSize: 14, color: kPlaceholderColor)),
-            Text('Load: ${vehicle.wasteCapacityKg} kg', style: TextStyle(fontSize: 14, color: kTextColor.withOpacity(0.8))),
+            Text('Driver: $driver', style: const TextStyle(fontSize: 14, color: kPlaceholderColor)),
+            Text('Load: $load kg', style: TextStyle(fontSize: 14, color: kTextColor.withOpacity(0.8))),
           ],
         ),
       ),
     );
   }
 
-  // Vehicle Details Card (Floating overlay for the map)
   Widget _buildDetailsCard(BuildContext context, VehicleModel vehicle) {
+    final regNo = vehicle.registrationNumber ?? 'N/A';
+    final driver = vehicle.driverName ?? 'Unknown';
+    final statusText = vehicle.status ?? 'No Data';
+    final load = vehicle.wasteCapacityKg?.toStringAsFixed(1) ?? '0.0';
+    final updateTime = vehicle.lastUpdated ?? 'Unknown Time';
+
     return Container(
       padding: const EdgeInsets.all(16.0),
       margin: const EdgeInsets.only(bottom: 20, left: 20, right: 20), 
@@ -213,7 +305,7 @@ class MapScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Details: ${vehicle.registrationNumber}', style: Theme.of(context).textTheme.titleLarge!.copyWith(fontSize: 22, color: kPrimaryColor)),
+              Text('Details: $regNo', style: Theme.of(context).textTheme.titleLarge!.copyWith(fontSize: 22, color: kPrimaryColor)),
               IconButton(
                 icon: const Icon(Icons.close, color: kPlaceholderColor),
                 onPressed: () => context.read<VehicleCubit>().selectVehicle(null),
@@ -221,9 +313,10 @@ class MapScreen extends StatelessWidget {
             ],
           ),
           const Divider(),
-          _detailRow(Icons.person, 'Driver:', vehicle.driverName, kTextColor),
-          _detailRow(Icons.pin_drop_outlined, 'Status:', vehicle.status, _getStatusColor(vehicle.status)),
-          _detailRow(Icons.speed, 'Load:', '${vehicle.wasteCapacityKg} kg', Colors.blue),
+          _detailRow(Icons.person, 'Driver:', driver, kTextColor), 
+          _detailRow(Icons.pin_drop_outlined, 'Status:', statusText, _getStatusColor(statusText)), 
+          _detailRow(Icons.speed, 'Load:', '$load kg', Colors.blue),
+          _detailRow(Icons.history, 'Last Update:', updateTime, kTextColor.withOpacity(0.8)),
         ],
       ),
     );
@@ -258,13 +351,13 @@ class MapScreen extends StatelessWidget {
             final visibleMarkers = loadedState.markers.where((m) {
               if (loadedState.activeFilter == VehicleFilter.all) return true;
               
-              // Find the corresponding vehicle to check its status against the active filter
               final statusFilter = loadedState.activeFilter.name[0].toUpperCase() + loadedState.activeFilter.name.substring(1);
+              
               final vehicle = loadedState.vehicles.firstWhere((v) => 
                   v.latitude == m.point.latitude && v.longitude == m.point.longitude, 
-                  orElse: () => loadedState.vehicles.first); // Safest fallback
+                  orElse: () => loadedState.vehicles.first); 
                   
-              return vehicle.status == statusFilter;
+              return (vehicle.status ?? 'No Data') == statusFilter;
             }).toList();
 
             // --- Full Screen Map Layout ---
@@ -284,7 +377,28 @@ class MapScreen extends StatelessWidget {
                       urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                       userAgentPackageName: 'com.example.iwms_citizen_app',
                     ),
-                    MarkerLayer(markers: visibleMarkers),
+                    MarkerLayer(
+                      markers: visibleMarkers.map((marker) {
+                        // CRITICAL: Remap the Marker object to use the custom widget defined above.
+                        final vehicle = loadedState.vehicles.firstWhere((v) => 
+                          v.latitude == marker.point.latitude && v.longitude == marker.point.longitude);
+
+                        final isSelected = loadedState.selectedVehicle?.id == vehicle.id; 
+                        final markerColor = _getStatusColor(vehicle.status);
+
+                        return Marker(
+                          width: 50.0,
+                          height: 50.0,
+                          point: marker.point,
+                          child: VehicleMarkerWidget(
+                            color: markerColor,
+                            isSelected: isSelected,
+                            vehicleId: vehicle.id,
+                            onTap: context.read<VehicleCubit>().selectVehicle,
+                          ),
+                        );
+                      }).toList(),
+                    ),
                   ],
                 ),
                 
@@ -340,7 +454,7 @@ class MapScreen extends StatelessWidget {
                 },
                 label: Text('Vehicle List (${state.vehicles.length})', style: const TextStyle(color: Colors.white)),
                 icon: const Icon(Icons.list, color: Colors.white),
-                backgroundColor: Colors.blue.shade700, // Replaced kAccentBlue
+                backgroundColor: Colors.blue.shade700, 
               );
             }
             return Container(); // Hide FAB while loading/error
