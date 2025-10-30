@@ -5,6 +5,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 // Layered import
 import '../models/user_model.dart';
 
+// ⚠️ MOCK DATA FOR SIMULATION - REPLACE WITH REAL API RESPONSES
+const Map<String, dynamic> _mockUserData = {
+  'user_id': '12345',
+  'user_name': 'Citizen User', 
+  'role': 'citizen', 
+  'auth_token': 'mock_jwt_token_12345',
+};
+
 class AuthRepository {
   final Dio dioClient;
   final Future<SharedPreferences> sharedPreferencesFuture; 
@@ -29,16 +37,17 @@ class AuthRepository {
     required String mobileNumber,
     required String otp,
   }) async {
-    // Note: Removed artificial Future.delayed calls for performance
+    // 🛑 IMPLEMENTATION POINT: REPLACE MOCK LOGIN WITH ACTUAL API CALL
+    // Example of real implementation:
+    // final response = await dioClient.post('/api/login', data: {'mobile': mobileNumber, 'otp': otp});
+    // final user = UserModel.fromJson(response.data);
     
-    final mockResponse = {
-      'user_id': '12345',
-      'user_name': 'Citizen User', 
-      'role': 'citizen', 
-      'auth_token': 'mock_jwt_token_12345',
-    };
+    // --- MOCK IMPLEMENTATION START ---
+    final user = UserModel.fromJson(_mockUserData);
+    // Simulate successful API call delay
+    await Future.delayed(const Duration(milliseconds: 500)); 
+    // --- MOCK IMPLEMENTATION END ---
     
-    final user = UserModel.fromJson(mockResponse);
     await _sharedPreferences.setString(_authTokenKey, user.authToken);
     return user;
   }
@@ -48,7 +57,7 @@ class AuthRepository {
     await _sharedPreferences.remove(_authTokenKey);
   }
 
-  // --- FETCH USER ROLE (From API after token check) ---
+  // --- FETCH USER ROLE (From local storage/API after token check) ---
   Future<UserModel?> getAuthenticatedUser() async {
     final token = _sharedPreferences.getString(_authTokenKey);
     
@@ -56,13 +65,16 @@ class AuthRepository {
       return null;
     }
 
-    // NOTE: Removed artificial Future.delayed calls for performance
-    
-    return const UserModel(
-      userId: '12345',
-      userName: 'Citizen User', 
-      role: 'citizen', 
-      authToken: 'mock_jwt_token_12345',
-    );
+    // 🛑 IMPLEMENTATION POINT: REPLACE MOCK USER FETCH WITH ACTUAL API CALL (or JWT verification)
+    // Example of real implementation:
+    // dioClient.options.headers['Authorization'] = 'Bearer $token';
+    // final response = await dioClient.get('/api/user/profile');
+    // return UserModel.fromJson(response.data);
+
+    // --- MOCK IMPLEMENTATION START ---
+    // Simulate successful token validation/user fetch
+    await Future.delayed(const Duration(milliseconds: 300));
+    return UserModel.fromJson(_mockUserData);
+    // --- MOCK IMPLEMENTATION END ---
   }
 }

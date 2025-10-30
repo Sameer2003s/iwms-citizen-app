@@ -33,7 +33,10 @@ android {
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("debug")
+            // 🟢 CRITICAL FIX: Removed the line below.
+            // DO NOT use debug signing in a release build. 
+            // You must now configure a proper release signing key separately 
+            // (typically via `key.properties` and the `signingConfigs` block)
         }
     }
 }

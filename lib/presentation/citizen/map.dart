@@ -7,7 +7,8 @@ import 'dart:ui'; // Explicitly used for Path, Canvas
 // Layered Imports (Using absolute paths for guaranteed resolution)
 import 'package:iwms_citizen_app/core/constants.dart';
 import 'package:iwms_citizen_app/core/di.dart';
-import 'package:iwms_citizen_app/logic/vehicle_tracking/vehicle_cubit.dart'; 
+import 'package:iwms_citizen_app/logic/vehicle_tracking/vehicle_bloc.dart'; 
+import 'package:iwms_citizen_app/logic/vehicle_tracking/vehicle_event.dart'; 
 import 'package:iwms_citizen_app/data/models/vehicle_model.dart'; 
 
 
@@ -85,7 +86,9 @@ class PinPointerPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant PinPointerPainter oldDelegate) => false;
+  bool shouldRepaint(covariant PinPointerPainter oldDelegate) {
+    return oldDelegate.color != color;
+  }
 }
 // --- END CUSTOM MARKER WIDGETS ---
 
@@ -108,10 +111,12 @@ class MapScreen extends StatelessWidget {
     final s = (status ?? '').toLowerCase();
     switch (s) {
       case 'running':
+      case 'moving vehicle': // Matches the API's 'Moving vehicle'
         return Colors.green.shade700;
       case 'idle':
         return Colors.orange.shade700;
       case 'parked':
+      case 'off': // Matches the API's 'OFF' status
         return Colors.blueGrey;
       case 'no data':
       case 'maintenance':
@@ -119,11 +124,6 @@ class MapScreen extends StatelessWidget {
       default:
         return kPlaceholderColor;
     }
-  }
-
-  int _countStatus(List<VehicleModel> vehicles, String status) {
-    // Safely filters by coalescing vehicle status to 'N/A' if null
-    return vehicles.where((v) => (v.status ?? 'N/A') == status).length;
   }
 
   Widget _detailRow(IconData icon, String label, String value, Color color) {
@@ -166,16 +166,15 @@ class MapScreen extends StatelessWidget {
         break;
     }
     
-    final count = filter == VehicleFilter.all 
-        ? loadedState.vehicles.length 
-        : _countStatus(loadedState.vehicles, statusKey);
+    // 🟢 FIX: Call the Bloc's centralized helper method for the accurate count.
+    final count = context.read<VehicleBloc>().countVehiclesByFilter(filter);
 
     final color = _getStatusColor(statusKey); 
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4.0),
       child: ActionChip(
-        avatar: isSelected ? Icon(Icons.check, size: 18, color: Colors.white) : null,
+        avatar: isSelected ? const Icon(Icons.check, size: 18, color: Colors.white) : null,
         label: Text(
           '$statusKey ($count)', 
           style: TextStyle(
@@ -188,20 +187,34 @@ class MapScreen extends StatelessWidget {
         side: BorderSide(color: color, width: 1.5),
         onPressed: () {
           final newFilter = isSelected ? VehicleFilter.all : filter;
-          context.read<VehicleCubit>().filterVehicles(newFilter);
+          context.read<VehicleBloc>().add(VehicleFilterUpdated(newFilter));
         },
       ),
     );
   }
 
   Widget _buildVehicleListModal(BuildContext context, List<VehicleModel> vehicles) {
-    final loadedState = context.read<VehicleCubit>().state as VehicleLoaded;
+    // 🔄 FIX: Read the Bloc
+    final loadedState = context.read<VehicleBloc>().state as VehicleLoaded;
     
+    // The filter list logic remains correct as it relies on the loadedState filter.
     final filteredList = vehicles.where((v) {
       if (loadedState.activeFilter == VehicleFilter.all) return true;
-      final vehicleStatus = v.status ?? 'No Data'; 
-      final statusKey = loadedState.activeFilter.name[0].toUpperCase() + loadedState.activeFilter.name.substring(1);
-      return vehicleStatus == statusKey;
+      final vehicleStatusLowerCase = (v.status ?? 'No Data').toLowerCase();
+      
+      // Match the vehicle status to the filter by its alias (e.g., 'running' matches 'moving vehicle')
+      switch (loadedState.activeFilter) {
+        case VehicleFilter.running:
+          return vehicleStatusLowerCase == 'running' || vehicleStatusLowerCase == 'moving vehicle';
+        case VehicleFilter.idle:
+          return vehicleStatusLowerCase == 'idle';
+        case VehicleFilter.parked:
+          return vehicleStatusLowerCase == 'parked' || vehicleStatusLowerCase == 'off' || vehicleStatusLowerCase == 'stopped';
+        case VehicleFilter.noData:
+          return vehicleStatusLowerCase == 'no data';
+        case VehicleFilter.all:
+          return true;
+      }
     }).toList();
 
 
@@ -239,14 +252,18 @@ class MapScreen extends StatelessWidget {
     final statusColor = _getStatusColor(vehicle.status); 
 
     final regNo = vehicle.registrationNumber ?? 'N/A';
-    final driver = vehicle.driverName ?? 'Driver Unknown';
+    // 🟢 FIX: Handle '-' or empty string for driver name display
+    final driver = (vehicle.driverName == null || vehicle.driverName!.trim().isEmpty || vehicle.driverName! == '-') 
+        ? 'Unknown' 
+        : vehicle.driverName!;
+        
     final statusText = vehicle.status ?? 'No Data';
     final load = vehicle.wasteCapacityKg?.toStringAsFixed(1) ?? '0.0';
 
 
     return InkWell(
       onTap: () {
-        context.read<VehicleCubit>().selectVehicle(vehicle.id);
+        context.read<VehicleBloc>().add(VehicleSelectionUpdated(vehicle.id));
         Navigator.pop(context); 
       },
       child: Container(
@@ -285,7 +302,11 @@ class MapScreen extends StatelessWidget {
 
   Widget _buildDetailsCard(BuildContext context, VehicleModel vehicle) {
     final regNo = vehicle.registrationNumber ?? 'N/A';
-    final driver = vehicle.driverName ?? 'Unknown';
+    // 🟢 FIX: Handle '-' or empty string for driver name display
+    final driver = (vehicle.driverName == null || vehicle.driverName!.trim().isEmpty || vehicle.driverName! == '-') 
+        ? 'Unknown' 
+        : vehicle.driverName!;
+        
     final statusText = vehicle.status ?? 'No Data';
     final load = vehicle.wasteCapacityKg?.toStringAsFixed(1) ?? '0.0';
     final updateTime = vehicle.lastUpdated ?? 'Unknown Time';
@@ -308,7 +329,7 @@ class MapScreen extends StatelessWidget {
               Text('Details: $regNo', style: Theme.of(context).textTheme.titleLarge!.copyWith(fontSize: 22, color: kPrimaryColor)),
               IconButton(
                 icon: const Icon(Icons.close, color: kPlaceholderColor),
-                onPressed: () => context.read<VehicleCubit>().selectVehicle(null),
+                onPressed: () => context.read<VehicleBloc>().add(const VehicleSelectionUpdated(null)),
               ),
             ],
           ),
@@ -327,13 +348,13 @@ class MapScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => getIt<VehicleCubit>()..fetchVehicles(),
+      create: (context) => getIt<VehicleBloc>()..add(VehicleFetchRequested()),
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Live Vehicle Monitoring'),
           backgroundColor: kPrimaryColor,
         ),
-        body: BlocBuilder<VehicleCubit, VehicleState>(
+        body: BlocBuilder<VehicleBloc, VehicleState>(
           builder: (context, state) {
             if (state is VehicleLoading) {
               return const Center(child: CircularProgressIndicator());
@@ -347,17 +368,46 @@ class MapScreen extends StatelessWidget {
               return const Center(child: Text('Map data is unavailable.', style: TextStyle(color: kPlaceholderColor)));
             }
             
-            // --- Vehicle Filtering for Markers ---
-            final visibleMarkers = loadedState.markers.where((m) {
-              if (loadedState.activeFilter == VehicleFilter.all) return true;
+            // --- Vehicle Filtering for Markers (Logic remains the same) ---
+            final String filterStatusLowerCase = loadedState.activeFilter == VehicleFilter.all
+                ? 'all'
+                : (loadedState.activeFilter == VehicleFilter.noData
+                    ? 'no data' 
+                    : loadedState.activeFilter.name.toLowerCase()); 
+                    
+            final visibleVehicles = loadedState.vehicles.where((v) {
+              final vehicleStatusLowerCase = (v.status ?? 'No Data').toLowerCase();
               
-              final statusFilter = loadedState.activeFilter.name[0].toUpperCase() + loadedState.activeFilter.name.substring(1);
+              if (filterStatusLowerCase == 'all') {
+                return true;
+              }
               
-              final vehicle = loadedState.vehicles.firstWhere((v) => 
-                  v.latitude == m.point.latitude && v.longitude == m.point.longitude, 
-                  orElse: () => loadedState.vehicles.first); 
-                  
-              return (vehicle.status ?? 'No Data') == statusFilter;
+              // We rely on the aliases configured in the filter logic in the List Modal.
+              if (filterStatusLowerCase == 'running') {
+                  return vehicleStatusLowerCase == 'running' || vehicleStatusLowerCase == 'moving vehicle';
+              }
+              if (filterStatusLowerCase == 'parked') {
+                  return vehicleStatusLowerCase == 'parked' || vehicleStatusLowerCase == 'off' || vehicleStatusLowerCase == 'stopped';
+              }
+              
+              return vehicleStatusLowerCase == filterStatusLowerCase;
+            }).toList();
+
+            final visibleMarkers = visibleVehicles.map((vehicle) {
+              final isSelected = loadedState.selectedVehicle?.id == vehicle.id; 
+              final markerColor = _getStatusColor(vehicle.status);
+
+              return Marker(
+                width: 50.0,
+                height: 50.0,
+                point: geo.LatLng(vehicle.latitude, vehicle.longitude),
+                child: VehicleMarkerWidget(
+                  color: markerColor,
+                  isSelected: isSelected,
+                  vehicleId: vehicle.id,
+                  onTap: (id) => context.read<VehicleBloc>().add(VehicleSelectionUpdated(id)),
+                ),
+              );
             }).toList();
 
             // --- Full Screen Map Layout ---
@@ -369,7 +419,7 @@ class MapScreen extends StatelessWidget {
                     initialCenter: _initialCenter,
                     initialZoom: 5.5, 
                     onTap: (tapPosition, point) {
-                        context.read<VehicleCubit>().selectVehicle(null); // Clear selection on map tap
+                        context.read<VehicleBloc>().add(const VehicleSelectionUpdated(null)); 
                     },
                   ),
                   children: [
@@ -378,26 +428,7 @@ class MapScreen extends StatelessWidget {
                       userAgentPackageName: 'com.example.iwms_citizen_app',
                     ),
                     MarkerLayer(
-                      markers: visibleMarkers.map((marker) {
-                        // CRITICAL: Remap the Marker object to use the custom widget defined above.
-                        final vehicle = loadedState.vehicles.firstWhere((v) => 
-                          v.latitude == marker.point.latitude && v.longitude == marker.point.longitude);
-
-                        final isSelected = loadedState.selectedVehicle?.id == vehicle.id; 
-                        final markerColor = _getStatusColor(vehicle.status);
-
-                        return Marker(
-                          width: 50.0,
-                          height: 50.0,
-                          point: marker.point,
-                          child: VehicleMarkerWidget(
-                            color: markerColor,
-                            isSelected: isSelected,
-                            vehicleId: vehicle.id,
-                            onTap: context.read<VehicleCubit>().selectVehicle,
-                          ),
-                        );
-                      }).toList(),
+                      markers: visibleMarkers,
                     ),
                   ],
                 ),
@@ -411,15 +442,35 @@ class MapScreen extends StatelessWidget {
                     elevation: 4,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0),
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                        child: Row(
-                          children: VehicleFilter.values.map((filter) {
-                            return _buildFilterChip(context, filter, loadedState);
-                          }).toList(),
-                        ),
+                      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 8.0),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                children: VehicleFilter.values.map((filter) {
+                                  return _buildFilterChip(context, filter, loadedState);
+                                }).toList(),
+                              ),
+                            ),
+                          ),
+                          // 🟢 FIX: Repositioned the Vehicle List button here
+                          IconButton(
+                            icon: const Icon(Icons.list_alt, color: kPrimaryColor),
+                            tooltip: 'Show Vehicle List',
+                            onPressed: () {
+                              showModalBottomSheet(
+                                context: context,
+                                isScrollControlled: true,
+                                shape: const RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                                ),
+                                builder: (_) => _buildVehicleListModal(context, loadedState.vehicles),
+                              );
+                            },
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -435,29 +486,6 @@ class MapScreen extends StatelessWidget {
                   ),
               ],
             );
-          },
-        ),
-        // 4. Floating Action Button (FAB) to open the Vehicle List Modal
-        floatingActionButton: BlocBuilder<VehicleCubit, VehicleState>(
-          builder: (context, state) {
-            if (state is VehicleLoaded) {
-              return FloatingActionButton.extended(
-                onPressed: () {
-                  showModalBottomSheet(
-                    context: context,
-                    isScrollControlled: true,
-                    shape: const RoundedRectangleBorder(
-                      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-                    ),
-                    builder: (_) => _buildVehicleListModal(context, state.vehicles),
-                  );
-                },
-                label: Text('Vehicle List (${state.vehicles.length})', style: const TextStyle(color: Colors.white)),
-                icon: const Icon(Icons.list, color: Colors.white),
-                backgroundColor: Colors.blue.shade700, 
-              );
-            }
-            return Container(); // Hide FAB while loading/error
           },
         ),
       ),

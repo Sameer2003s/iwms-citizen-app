@@ -34,39 +34,55 @@ class VehicleModel extends Equatable {
       return 0.0;
     }
 
-    // --- CRITICAL API KEY MAPPING (Assuming VAM/ZIGMA Telematics Fields) ---
+    // --- FIX: Mapping to Exact API Keys (regNo, lat/lng, vehicleMode) ---
     
-    // Registration Number (Assuming keys like VEHICLE_NO or VEHICLENO)
-    final regNo = json['VEHICLE_NO']?.toString() ?? json['VEHICLENO']?.toString();
+    // Registration Number (Prioritize 'regNo')
+    final regNo = json['regNo']?.toString() 
+        ?? json['VEHICLE_NO']?.toString() 
+        ?? json['vehicle_no']?.toString();
     
-    // Driver Name
-    final driver = json['DRIVER_NAME']?.toString() ?? json['DRIVER']?.toString();
+    // Driver Name (Prioritize 'driverName'. Normalizes '-' to null for fallback.)
+    final rawDriverName = json['driverName']?.toString() 
+        ?? json['DRIVER_NAME']?.toString() 
+        ?? json['driver_name']?.toString();
     
-    // Map coordinates (critical for map view)
-    // NOTE: If LAT/LON are strings, the safe parser handles conversion.
-    final lat = _safeParseDouble(json['LAT'] ?? json['latitude']);
-    final lon = _safeParseDouble(json['LON'] ?? json['longitude']);
+    final driver = (rawDriverName == '-' || rawDriverName?.trim().isEmpty == true) 
+        ? null 
+        : rawDriverName;
     
-    // Status field
-    final apiStatus = json['VEHICLE_STATUS']?.toString() ?? json['STATUS']?.toString();
+    // Map coordinates (Prioritize the inner, numeric 'lat' and 'lng' fields)
+    final lat = _safeParseDouble(json['lat'] ?? json['LAT'] ?? json['latitude']);
+    final lon = _safeParseDouble(json['lng'] ?? json['LON'] ?? json['longitude']);
     
-    // Load/capacity data
-    final loadData = json['CURRENT_LOAD'] ?? json['LOAD'];
+    // Status field (Use 'vehicleMode' or 'ignitionStatus' as primary status source)
+    final apiStatus = json['vehicleMode']?.toString()
+        ?? json['ignitionStatus']?.toString()
+        ?? json['VEHICLE_STATUS']?.toString() 
+        ?? json['status']?.toString(); 
     
-    // Last Update Time
-    final updateTime = json['LAST_UPDATE_TIME']?.toString() ?? json['LUPT']?.toString();
+    // Load/capacity data (Using loadTruck as a best guess, mapping "nill" to 0)
+    final loadData = json['loadTruck']?.toString() != 'nill'
+        ? json['loadTruck']
+        : (json['CURRENT_LOAD'] ?? json['load']); 
+    
+    // Last Update Time (Use 'lastSeen' as primary)
+    final updateTime = json['lastSeen']?.toString() 
+        ?? json['LAST_UPDATE_TIME']?.toString();
 
     // --- Model Assembly ---
 
-    // Determine unique ID
-    final vehicleId = regNo ?? '${lat}_${lon}';
+    // Determine unique ID (Use deviceId as a robust fallback ID)
+    final vehicleId = regNo ?? json['deviceId']?.toString() ?? '${lat}_${lon}';
     
-    // Determine the status (Cleaned and capitalized for consistent filtering/UI display)
+    // Determine the status (Cleaned and capitalized for consistent UI display)
     String determinedStatus;
     if (apiStatus != null) {
-      determinedStatus = apiStatus[0].toUpperCase() + apiStatus.substring(1).toLowerCase();
+      determinedStatus = apiStatus.isNotEmpty 
+          ? apiStatus[0].toUpperCase() + apiStatus.substring(1).toLowerCase()
+          : 'No Data';
       
-      if (determinedStatus.toLowerCase() == 'nodata' || determinedStatus.isEmpty) {
+      // Clean up generic/null statuses
+      if (determinedStatus.toLowerCase() == 'nodata' || determinedStatus.isEmpty || determinedStatus.toLowerCase() == 'nill') {
         determinedStatus = 'No Data'; 
       }
     } else {
@@ -84,6 +100,7 @@ class VehicleModel extends Equatable {
       driverName: driver,
       status: determinedStatus, 
       
+      // Pass load data through safe parser
       wasteCapacityKg: _safeParseDouble(loadData),
       lastUpdated: updateTime,
     );

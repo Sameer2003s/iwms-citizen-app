@@ -4,9 +4,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 // Layered imports
 import '../data/repositories/auth_repository.dart';
-import '../data/repositories/vehicle_repository.dart'; // <<< IMPORTS VEHICLE REPO
+import '../data/repositories/vehicle_repository.dart'; 
 import '../logic/auth/auth_bloc.dart';
-import '../logic/vehicle_tracking/vehicle_cubit.dart'; // <<< IMPORTS VEHICLE CUBIT
+// 🔄 FIX: Import the new Bloc file and class
+import '../logic/vehicle_tracking/vehicle_bloc.dart'; 
 
 final getIt = GetIt.instance;
 
@@ -47,9 +48,9 @@ void setupDI() {
     ),
   );
 
-  // Register the VehicleCubit (Factory, as it holds map state)
-  getIt.registerFactory<VehicleCubit>(
-    () => VehicleCubit(
+  // 🔄 FIX: Register the new VehicleBloc (Factory, as it holds map state)
+  getIt.registerFactory<VehicleBloc>(
+    () => VehicleBloc(
       getIt<VehicleRepository>(), 
     ),
   );
