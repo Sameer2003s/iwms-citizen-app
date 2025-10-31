@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import '../../core/constants.dart';
 import '../../logic/auth/auth_bloc.dart';
 import '../../logic/auth/auth_event.dart';
-// Note: AuthState is implicitly used by context.read but not needed for the listener here
 import '../../router/app_router.dart';
 
 
@@ -26,19 +25,15 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _handleContinue(BuildContext context) {
     final mobileNumber = _mobileController.text.trim();
-    // CRITICAL: We only mock login if a valid-looking number is entered.
     if (mobileNumber.length == 10) { 
-      // 1. Dispatch the Login Event to the AuthBloc
-      // The AuthBloc will change state to AuthStateAuthenticatedCitizen.
+      // Dispatch the Login Event with mobile and mock OTP
       context.read<AuthBloc>().add(
         AuthLoginRequested(
           mobileNumber: mobileNumber,
           otp: '123456', // Mock OTP
         ),
       );
-      // The GoRouter redirect logic in app_router.dart handles navigation.
     } else {
-      // Show simple user feedback if input validation fails
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please enter a valid 10-digit mobile number.'),
@@ -49,11 +44,9 @@ class _LoginScreenState extends State<LoginScreen> {
   }
   
   void _navigateToRegister(BuildContext context) {
-    // Navigate to RegisterScreen using GoRouter
     context.push(AppRoutePaths.register); 
   }
 
-  // Helper widget to display the logo with a background
   Widget _appLogoAsset() {
     return Container(
       height: 100,
@@ -68,7 +61,6 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // Custom Country Code Dropdown Menu
   Widget _buildCountryCodeDropdown() {
     return Container(
       height: 56,
@@ -107,7 +99,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // REMOVED BlocListener here as navigation is handled centrally by GoRouter.
+    // There is no BlocListener checking for AuthFailure, so this file is safe.
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -119,11 +111,9 @@ class _LoginScreenState extends State<LoginScreen> {
             children: [
               const SizedBox(height: 40), 
               
-              // 1. Header/Logo
               _appLogoAsset(),
               const SizedBox(height: 32),
 
-              // 2. Title and Subtitle 
               Text(
                 "Welcome to IWMS",
                 style: Theme.of(context).textTheme.titleLarge!.copyWith(color: kTextColor), 
@@ -136,7 +126,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 40),
 
-              // 3. Input Form
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -153,13 +142,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   Row(
                     children: [
-                      // Country Code Dropdown Section
                       _buildCountryCodeDropdown(),
-                      
-                      // Input field
                       Expanded(
                         child: TextFormField(
-                          controller: _mobileController, // Attach controller
+                          controller: _mobileController,
                           keyboardType: TextInputType.phone,
                           maxLength: 10,
                           style: const TextStyle(color: kTextColor, fontSize: 16),
@@ -200,7 +186,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 20),
 
-              // 4. Primary CTA
               SizedBox(
                 width: double.infinity,
                 height: 56,
@@ -223,7 +208,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 32),
 
-              // 5. Secondary Text Link
               GestureDetector(
                 onTap: () => _navigateToRegister(context),
                 child: Text(

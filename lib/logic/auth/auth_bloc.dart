@@ -1,7 +1,5 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
-
-// New layered imports
 import '../../data/repositories/auth_repository.dart'; 
 import 'auth_event.dart';
 import 'auth_state.dart';
@@ -9,13 +7,10 @@ import 'auth_state.dart';
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final AuthRepository _authRepository;
   
-  // A Future that must complete before any event handlers are executed
-  // CRITICAL: Made public (removed underscore) for SplashScreen to access for timing
   final Future<void> initialization; 
 
   AuthBloc({required AuthRepository authRepository}) 
       : _authRepository = authRepository, 
-        // 1. Start the async initialization immediately (non-blocking)
         initialization = authRepository.initialize(), 
         super(const AuthStateInitial()) {
     
@@ -23,14 +18,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthLoginRequested>(_onLoginRequested);
     on<AuthLogoutRequested>(_onLogoutRequested);
     
-    // 2. The initial dispatch is handled by SplashScreen, which awaits 'initialization'.
-    // We only dispatch the event here once the future resolves, as a fallback/guarantee.
     initialization.then((_) {
       add(AuthStatusChecked()); 
     });
   }
   
-  void _onStatusChecked(
+  Future<void> _onStatusChecked(
     AuthStatusChecked event,
     Emitter<AuthState> emit,
   ) async {
@@ -53,16 +46,16 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     }
   }
 
-  void _onLoginRequested(
+  Future<void> _onLoginRequested(
     AuthLoginRequested event,
     Emitter<AuthState> emit,
   ) async {
-    emit(const AuthStateInitial());
+    emit(const AuthStateInitial()); // Use AuthStateInitial as loading
 
     try {
       final user = await _authRepository.login(
-        mobileNumber: event.mobileNumber, 
-        otp: event.otp,
+        mobileNumber: event.mobileNumber, // This now matches the repo
+        otp: event.otp,                 // This now matches the repo
       );
       
       if (user.role == 'citizen') {
@@ -73,11 +66,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       }
 
     } catch (e) {
+      // This is the correct error handling for your original BLoC
       emit(const AuthStateUnauthenticated()); 
     }
   }
 
-  void _onLogoutRequested(
+  Future<void> _onLogoutRequested(
     AuthLogoutRequested event,
     Emitter<AuthState> emit,
   ) async {

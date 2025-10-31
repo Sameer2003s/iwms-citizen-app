@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:async'; // Needed for GoRouterRefreshStream
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 // New layered imports
 import '../core/di.dart';
 import '../logic/auth/auth_bloc.dart';
-import '../logic/auth/auth_state.dart';
+import '../logic/auth/auth_state.dart'; // <-- This file is now correct
 
-// Import all relocated Presentation layer files 
+// Import all Presentation layer files 
 import '../presentation/citizen/splashscreen.dart'; 
 import '../presentation/citizen/login.dart';
 import '../presentation/citizen/home.dart';
@@ -23,8 +24,6 @@ class AppRoutePaths {
   static const splash = '/splash';
   static const login = '/login';
   static const register = '/register';
-
-  // Citizen Paths
   static const citizenDashboard = '/citizen/dashboard';
   static const citizenHistory = '/citizen/history';
   static const citizenTrack = '/citizen/track';
@@ -41,7 +40,7 @@ class AppRouter {
     initialLocation: AppRoutePaths.splash,
     navigatorKey: rootNavigatorKey,
 
-    // 2. REDIRECTION LOGIC 
+    // 2. REDIRECTION LOGIC (FIXED)
     redirect: (BuildContext context, GoRouterState state) {
       final authState = authBloc.state; 
 
@@ -49,45 +48,42 @@ class AppRouter {
       final isRegistering = state.uri.toString() == AppRoutePaths.register;
       final isSplash = state.uri.toString() == AppRoutePaths.splash;
 
-      // --- CRITICAL FIX: FORCING SPLASH SCREEN VISIBILITY ---
-      // 1. If the AuthBloc is still checking status (Auth/Vehicle State Initial), 
-      //    force the app to stay on the Splash screen path.
+      // 1. If the AuthBloc is still checking status, force splash screen
       if (authState is AuthStateInitial) {
         return isSplash ? null : AppRoutePaths.splash;
       }
 
-      // --- LOGIC RULES (Only run once initialization is complete) ---
-
-      if (authState.role == UserRole.unauthenticated) {
-        // If logged out: Allow access to Login/Register, otherwise redirect to Login
+      // 2. If logged out:
+      // THIS IS THE FIX: We check for AuthStateUnauthenticated
+      if (authState is AuthStateUnauthenticated) {
+        // Allow access to Login/Register, otherwise redirect to Login
         return isLoggingIn || isRegistering ? null : AppRoutePaths.login;
       }
 
-      if (authState.role == UserRole.citizen) {
-        // If logged in: Block access to Login/Splash/Register, redirect to Dashboard
+      // 3. If logged in:
+      // We check for the specific state from your BLoC
+      if (authState is AuthStateAuthenticatedCitizen) {
+        // If on splash, login, or register, send to Dashboard
         if (isLoggingIn || isSplash || isRegistering) {
              return AppRoutePaths.citizenDashboard;
         }
-        // User is authenticated and navigating correctly.
+        // Otherwise, user is logged in and going to a valid page. Allow it.
         return null;
       }
       
-      // Default fallback (should lead to login or dashboard depending on state)
+      // Default fallback
       return null;
     },
 
     // 3. LISTEN TO STATE
     refreshListenable: GoRouterRefreshStream(authBloc.stream),
 
-    // 4. ROUTE DEFINITIONS 
+    // 4. ROUTE DEFINITIONS (From your repo)
     routes: [
-      // Splash Screen
       GoRoute(
         path: AppRoutePaths.splash,
         builder: (context, state) => const SplashScreen(),
       ),
-
-      // Authentication Routes
       GoRoute(
         path: AppRoutePaths.login,
         builder: (context, state) => const LoginScreen(),
@@ -96,13 +92,13 @@ class AppRouter {
         path: AppRoutePaths.register,
         builder: (context, state) => const RegisterScreen(),
       ),
-
-      // Citizen Module Routes
       GoRoute(
         path: AppRoutePaths.citizenDashboard,
-        builder: (context, state) => CitizenDashboard(
-          userName: authBloc.state.userName ?? 'Citizen', 
-        ),
+        builder: (context, state) {
+           return CitizenDashboard(
+             userName: authBloc.state.userName ?? 'Citizen', 
+           );
+         },
       ),
       GoRoute(
         path: AppRoutePaths.citizenHistory,
@@ -115,7 +111,7 @@ class AppRouter {
       GoRoute(
         path: AppRoutePaths.citizenDriverDetails,
         builder: (context, state) {
-             return DriverDetailsScreen(
+             return const DriverDetailsScreen(
                  driverName: 'Rajesh Kumar', 
                  vehicleNumber: 'TN 01 AB 1234', 
              );
@@ -131,6 +127,15 @@ class AppRouter {
                  vehicleNumber: args['vehicleNumber'] as String? ?? 'N/A',
              );
          },
+      ),
+      // This "registration success" page
+      GoRoute(
+        path: '/home', 
+        builder: (context, state) {
+          return HomeScreen(
+            userName: authBloc.state.userName ?? 'Citizen',
+          );
+        },
       ),
     ],
   );

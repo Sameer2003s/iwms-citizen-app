@@ -6,7 +6,7 @@ import '../../core/constants.dart';
 import '../../logic/auth/auth_bloc.dart';
 import '../../logic/auth/auth_event.dart';
 
-// Dropdown items for property type, as suggested in the planning
+// Dropdown items for property type
 enum PropertyType { house, apartment, office, commercial, other }
 
 class RegisterScreen extends StatefulWidget {
@@ -28,18 +28,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (userName.isNotEmpty && _addressController.text.isNotEmpty) {
       
       // Simulate successful registration and automatically log the user in.
-      // 1. Dispatch the Login Event (AuthBloc handles API call and state change)
       context.read<AuthBloc>().add(
         AuthLoginRequested(
           mobileNumber: '9999999999', // Mock mobile number for this registration
-          otp: '1234', 
+          otp: '1234', // Mock OTP
         ),
       );
       
-      // 2. The AuthBlocListener in login.dart (or the global router redirect)
-      // will handle the navigation to AppRoutePaths.citizenDashboard.
-      
-      // Show confirmation message
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Registration successful! Redirecting to dashboard...'),
@@ -50,9 +45,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     } else {
       // Simple error message for demo
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Please fill in Name and Address to complete registration.'),
-          backgroundColor: kPrimaryColor,
+        const SnackBar(
+          content: Text('Please fill in Name and Address to complete registration.'),
+          backgroundColor: Colors.red,
         ),
       );
     }
@@ -105,7 +100,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
         title: const Text('New User Registration'),
         backgroundColor: kPrimaryColor,
         elevation: 0,
-        // GoRouter handles the back button automatically for popping from the stack
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -113,7 +107,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header Text
               Text(
                 "Tell us about your home.",
                 style: Theme.of(context).textTheme.titleLarge!.copyWith(
@@ -129,15 +122,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
               const SizedBox(height: 32),
 
-              // 1. Name Field
               _buildInputField("Full Name", _nameController, hint: "John Doe"),
               
-              // 2. Email Field
               _buildInputField("Email (Optional)", _emailController, hint: "e.g., example@email.com"),
               
               const SizedBox(height: 10),
 
-              // 3. Property Type 
               _buildLabel("Property Type"),
               Container(
                 decoration: BoxDecoration(
@@ -152,7 +142,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     border: InputBorder.none, 
                     contentPadding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
                   ),
-                  initialValue: _selectedPropertyType,
+                  value: _selectedPropertyType,
                   items: PropertyType.values.map((PropertyType type) {
                     return DropdownMenuItem<PropertyType>(
                       value: type,
@@ -168,7 +158,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
               const SizedBox(height: 20),
 
-              // 4. Address Fields
               _buildInputField("Property Address", _addressController, hint: "House/Apartment Number & Street"),
               
               TextFormField(
@@ -178,7 +167,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
               const SizedBox(height: 30),
 
-              // 5. Geolocation Button (Placeholder)
               const Text(
                 "Location Verification (GPS Tagging)",
                 style: TextStyle(color: kTextColor, fontSize: 16, fontWeight: FontWeight.bold),
@@ -202,7 +190,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
               const SizedBox(height: 40),
 
-              // 6. Completion CTA
               SizedBox(
                 width: double.infinity,
                 height: 56,

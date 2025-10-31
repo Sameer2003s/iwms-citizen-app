@@ -25,10 +25,8 @@ class AuthRepository {
 
   // --- INITIALIZATION METHOD: Resolves the Future and is called by the Bloc ---
   Future<void> initialize() async {
-    // This is where the Future is finally resolved to the concrete object
     _sharedPreferences = await sharedPreferencesFuture;
   }
-  // -------------------------------------------------------------------------
   
   static const String _authTokenKey = 'auth_token';
 

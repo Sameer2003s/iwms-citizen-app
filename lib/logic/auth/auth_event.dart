@@ -1,8 +1,6 @@
 // lib/logic/auth/auth_event.dart
-
 import 'package:equatable/equatable.dart';
 
-// The base class for all Auth Events.
 abstract class AuthEvent extends Equatable {
   const AuthEvent();
 
@@ -10,7 +8,7 @@ abstract class AuthEvent extends Equatable {
   List<Object> get props => [];
 }
 
-// Event triggered when the user attempts to log in (e.g., clicks the button)
+// Event triggered when the user attempts to log in
 class AuthLoginRequested extends AuthEvent {
   final String mobileNumber;
   final String otp;
@@ -21,9 +19,8 @@ class AuthLoginRequested extends AuthEvent {
   List<Object> get props => [mobileNumber, otp];
 }
 
-// Event triggered when the user logs out (e.g., clicks 'Logout' in the Drawer)
+// Event triggered when the user logs out
 class AuthLogoutRequested extends AuthEvent {}
 
-// Event triggered automatically to check if a user is already logged in 
-// (e.g., when the app first starts).
+// Event to check status on app start
 class AuthStatusChecked extends AuthEvent {}
