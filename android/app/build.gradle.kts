@@ -6,37 +6,32 @@ plugins {
 }
 
 android {
-    namespace = "com.example.user_login" // Ensure this matches your package name
-    compileSdk = flutter.compileSdkVersion
+    namespace = "com.example.iwms_citizen_app" // Using your new namespace
+    compileSdk = 34 // Use a modern compile SDK
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
-        // CRITICAL FIX 1: Set source/target to Java 17 for stability with modern libraries
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        // --- FIX: Set to Java 1.8 for compatibility ---
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()
+        jvmTarget = "1.8" // --- FIX ---
     }
 
     defaultConfig {
-        applicationId = "com.example.user_login"
-        minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        applicationId = "com.example.iwms_citizen_app"
+        minSdk = 21 // <-- CRITICAL FIX for older packages
+        targetSdk = 34 
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-        
-        // CRITICAL FIX 2: Enable MultiDex for apps with many dependencies (Bloc, Map, etc.)
-        multiDexEnabled = true 
+        multiDexEnabled = true // <-- CRITICAL FIX
     }
 
     buildTypes {
         release {
-            // 🟢 CRITICAL FIX: Removed the line below.
-            // DO NOT use debug signing in a release build. 
-            // You must now configure a proper release signing key separately 
-            // (typically via `key.properties` and the `signingConfigs` block)
+            // Configure your signing configs here
         }
     }
 }
@@ -45,8 +40,7 @@ flutter {
     source = "../.."
 }
 
-// CRITICAL FIX 3: Add the MultiDex dependency
 dependencies {
-    // This library is required to enable multidex support
-    implementation("androidx.multidex:multidex:2.0.1") 
+     implementation("androidx.multidex:multidex:2.0.1") // <-- CRITICAL FIX
 }
+

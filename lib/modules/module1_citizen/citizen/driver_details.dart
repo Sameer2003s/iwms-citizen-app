@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 // Note: Relative imports now work since you moved this file into presentation/citizen/
-import '../../core/constants.dart'; 
+import '../../../core/constants.dart'; 
 import 'package:go_router/go_router.dart'; // Import GoRouter
 
 // --- Reusable custom slide-up transition is now deprecated, use GoRouter navigation ---

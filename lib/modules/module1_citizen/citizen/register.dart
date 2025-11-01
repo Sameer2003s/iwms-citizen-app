@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 // Layered imports
-import '../../core/constants.dart';
-import '../../logic/auth/auth_bloc.dart';
-import '../../logic/auth/auth_event.dart';
+import '../../../core/constants.dart';
+import '../../../logic/auth/auth_bloc.dart';
+import '../../../logic/auth/auth_event.dart';
 
 // Dropdown items for property type
 enum PropertyType { house, apartment, office, commercial, other }

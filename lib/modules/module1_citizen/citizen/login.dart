@@ -3,10 +3,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 // Layered imports
-import '../../core/constants.dart';
-import '../../logic/auth/auth_bloc.dart';
-import '../../logic/auth/auth_event.dart';
-import '../../router/app_router.dart';
+import '../../../core/constants.dart';
+import '../../../logic/auth/auth_bloc.dart';
+import '../../../logic/auth/auth_event.dart';
+import '../../../router/app_router.dart';
 
 
 class LoginScreen extends StatefulWidget {
@@ -44,7 +44,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
   
   void _navigateToRegister(BuildContext context) {
-    context.push(AppRoutePaths.register); 
+    context.push(AppRoutePaths.citizenRegister); 
   }
 
   Widget _appLogoAsset() {

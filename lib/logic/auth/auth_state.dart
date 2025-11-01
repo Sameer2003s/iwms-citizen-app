@@ -1,7 +1,7 @@
 // lib/logic/auth/auth_state.dart
 import 'package:equatable/equatable.dart';
 
-// The Roles from your documentation
+// The Roles for the whole "super app"
 enum UserRole {
   unknown,
   unauthenticated,
@@ -22,15 +22,9 @@ class AuthState extends Equatable {
 
   @override
   List<Object?> get props => [role, userName];
-
-  const AuthState.copyWith({UserRole? role, String? userName})
-      : role = role ?? UserRole.unknown,
-        userName = userName;
 }
 
-// --- Specific States for better clarity ---
-
-// 1. Initial/Loading State (e.g., checking if the user has a token)
+// 1. Initial/Loading State
 class AuthStateInitial extends AuthState {
   const AuthStateInitial() : super(role: UserRole.unknown);
 }
@@ -40,8 +34,29 @@ class AuthStateUnauthenticated extends AuthState {
   const AuthStateUnauthenticated() : super(role: UserRole.unauthenticated);
 }
 
-// 3. Logged In as a Citizen (Example of a specific role state)
-class AuthStateAuthenticatedCitizen extends AuthState {
+// 3. Base class for ANY authenticated user
+abstract class AuthStateAuthenticated extends AuthState {
+  const AuthStateAuthenticated({required UserRole role, required String userName})
+      : super(role: role, userName: userName);
+}
+
+// 4. Logged In as a Citizen
+class AuthStateAuthenticatedCitizen extends AuthStateAuthenticated {
   const AuthStateAuthenticatedCitizen({required String userName})
       : super(role: UserRole.citizen, userName: userName);
+}
+
+// 5. Logged In as a Driver
+class AuthStateAuthenticatedDriver extends AuthStateAuthenticated {
+  const AuthStateAuthenticatedDriver({required String userName})
+      : super(role: UserRole.driver, userName: userName);
+}
+
+// 6. Failure State
+class AuthStateFailure extends AuthState {
+  final String message;
+  const AuthStateFailure({required this.message}) : super(role: UserRole.unknown);
+
+  @override
+  List<Object?> get props => [role, userName, message];
 }

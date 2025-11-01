@@ -1,57 +1,41 @@
-import 'package:get_it/get_it.dart';
 import 'package:dio/dio.dart';
+import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-// Layered imports
-import '../data/repositories/auth_repository.dart';
-import '../data/repositories/vehicle_repository.dart'; 
-import '../logic/auth/auth_bloc.dart';
-// 🔄 FIX: Import the new Bloc file and class
-import '../logic/vehicle_tracking/vehicle_bloc.dart'; 
+import 'package:iwms_citizen_app/data/repositories/auth_repository.dart';
+import 'package:iwms_citizen_app/logic/auth/auth_bloc.dart';
+import 'api_config.dart'; // <-- THIS IS THE FIX
 
 final getIt = GetIt.instance;
 
 void setupDI() {
-  // 1. SERVICES / CLIENTS 
+  // --- External ---
   
-  // Register Future<SharedPreferences> that the Repository will await internally.
-  getIt.registerLazySingleton<Future<SharedPreferences>>(
-    () => SharedPreferences.getInstance(),
-  );
+  // Register Dio as a Singleton
+  getIt.registerSingleton<Dio>(createDioClient()); // <-- This will now be found
 
-  // Register Dio instance
-  getIt.registerLazySingleton<Dio>(() => Dio());
+  // Register SharedPreferences as a Future
+  getIt.registerSingletonAsync<SharedPreferences>(
+      () => SharedPreferences.getInstance());
+
+  // --- Repositories ---
   
-  // 2. REPOSITORIES 
-  
-  // Register the AuthRepository.
-  getIt.registerLazySingleton<AuthRepository>(
+  // AuthRepository (depends on Dio and SharedPreferences)
+  getIt.registerSingletonWithDependencies<AuthRepository>(
     () => AuthRepository(
-      dioClient: getIt<Dio>(),
-      sharedPreferencesFuture: getIt<Future<SharedPreferences>>(), 
+      prefs: getIt<SharedPreferences>(),
+      dio: getIt<Dio>(),
     ),
-  );
-  
-  // Register the VehicleRepository (using Dio for API calls)
-  getIt.registerLazySingleton<VehicleRepository>(
-    () => VehicleRepository(
-      dioClient: getIt<Dio>(),
-    ),
+    dependsOn: [SharedPreferences],
   );
 
-  // 3. BLOCS / CUBITS 
+  // --- BLoCs ---
   
-  // Register the AuthBloc (Factory, as it holds state)
-  getIt.registerFactory<AuthBloc>(
+  // AuthBloc (depends on AuthRepository)
+  getIt.registerSingletonWithDependencies<AuthBloc>(
     () => AuthBloc(
       authRepository: getIt<AuthRepository>(),
     ),
-  );
-
-  // 🔄 FIX: Register the new VehicleBloc (Factory, as it holds map state)
-  getIt.registerFactory<VehicleBloc>(
-    () => VehicleBloc(
-      getIt<VehicleRepository>(), 
-    ),
+    dependsOn: [AuthRepository],
   );
 }
+

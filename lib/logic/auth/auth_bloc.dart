@@ -1,3 +1,4 @@
+// lib/logic/auth/auth_bloc.dart
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../data/repositories/auth_repository.dart'; 
@@ -17,7 +18,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthStatusChecked>(_onStatusChecked);
     on<AuthLoginRequested>(_onLoginRequested);
     on<AuthLogoutRequested>(_onLogoutRequested);
-    
+    on<AuthDriverLoginRequested>(_onDriverLoginRequested); // <-- Handler added
+
     initialization.then((_) {
       add(AuthStatusChecked()); 
     });
@@ -36,6 +38,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         case 'citizen':
           emit(AuthStateAuthenticatedCitizen(userName: user.userName));
           break;
+        case 'driver':
+          emit(AuthStateAuthenticatedDriver(userName: user.userName));
+          break;
         default:
           await _authRepository.logout();
           emit(const AuthStateUnauthenticated());
@@ -50,24 +55,33 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthLoginRequested event,
     Emitter<AuthState> emit,
   ) async {
-    emit(const AuthStateInitial()); // Use AuthStateInitial as loading
-
+    emit(const AuthStateInitial()); // Set loading state
     try {
+      // CITIZEN login
       final user = await _authRepository.login(
-        mobileNumber: event.mobileNumber, // This now matches the repo
-        otp: event.otp,                 // This now matches the repo
+        mobileNumber: event.mobileNumber, 
+        otp: event.otp,                 
       );
-      
-      if (user.role == 'citizen') {
-        emit(AuthStateAuthenticatedCitizen(userName: user.userName));
-      } else {
-        await _authRepository.logout();
-        emit(const AuthStateUnauthenticated());
-      }
-
+      emit(AuthStateAuthenticatedCitizen(userName: user.userName));
     } catch (e) {
-      // This is the correct error handling for your original BLoC
-      emit(const AuthStateUnauthenticated()); 
+      emit(AuthStateFailure(message: e.toString()));
+    }
+  }
+
+  Future<void> _onDriverLoginRequested(
+    AuthDriverLoginRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(const AuthStateInitial()); // Set loading state
+    try {
+      // DRIVER login (now calls the repo)
+      final user = await _authRepository.loginDriver(
+        userName: event.userName,
+        password: event.password,
+      );
+      emit(AuthStateAuthenticatedDriver(userName: user.userName));
+    } catch (e) {
+      emit(AuthStateFailure(message: e.toString()));
     }
   }
 

@@ -1,160 +1,221 @@
+// lib/router/app_router.dart
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'dart:async'; // Needed for GoRouterRefreshStream
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:iwms_citizen_app/core/di.dart';
+import 'package:iwms_citizen_app/logic/auth/auth_bloc.dart';
+import 'package:iwms_citizen_app/logic/auth/auth_state.dart'; 
+import 'package:iwms_citizen_app/router/route_observer.dart'; 
 
-// New layered imports
-import '../core/di.dart';
-import '../logic/auth/auth_bloc.dart';
-import '../logic/auth/auth_state.dart'; // <-- This file is now correct
+// --- Import all your screens ---
 
-// Import all Presentation layer files 
-import '../presentation/citizen/splashscreen.dart'; 
-import '../presentation/citizen/login.dart';
-import '../presentation/citizen/home.dart';
-import '../presentation/citizen/register.dart';
-import '../presentation/citizen/calender.dart';
-import '../presentation/citizen/driver_details.dart';
-import '../presentation/citizen/track_waste.dart';
-import '../presentation/citizen/map.dart'; 
+// Splash & User Selection
+import 'package:iwms_citizen_app/modules/module1_citizen/citizen/splashscreen.dart'; 
+import 'package:iwms_citizen_app/presentation/user_selection/user_selection_screen.dart';
+
+// Module 1: Citizen (Imports from new location)
+import 'package:iwms_citizen_app/modules/module1_citizen/citizen/login.dart';
+import 'package:iwms_citizen_app/modules/module1_citizen/citizen/register.dart';
+import 'package:iwms_citizen_app/modules/module1_citizen/citizen/home.dart';
+import 'package:iwms_citizen_app/modules/module1_citizen/citizen/calender.dart';
+import 'package:iwms_citizen_app/modules/module1_citizen/citizen/track_waste.dart';
+import 'package:iwms_citizen_app/modules/module1_citizen/citizen/driver_details.dart';
+import 'package:iwms_citizen_app/modules/module1_citizen/citizen/map.dart'; 
+
+// Module 2: Driver (Imports for new screens)
+import 'package:iwms_citizen_app/modules/module2_driver/presentation/driver_login_screen.dart';
+import 'package:iwms_citizen_app/modules/module2_driver/presentation/driver_home_screen.dart';
+import 'package:iwms_citizen_app/modules/module2_driver/presentation/driver_qr_scan_screen.dart';
+import 'package:iwms_citizen_app/modules/module2_driver/presentation/driver_data_screen.dart';
 
 
-// --- Named Routes (The map addresses) ---
+// --- Define static route paths ---
 class AppRoutePaths {
-  static const splash = '/splash';
-  static const login = '/login';
-  static const register = '/register';
-  static const citizenDashboard = '/citizen/dashboard';
-  static const citizenHistory = '/citizen/history';
-  static const citizenTrack = '/citizen/track';
-  static const citizenDriverDetails = '/citizen/driver-details';
-  static const citizenMap = '/citizen/map'; 
+  static const String splash = '/';
+  static const String selectUser = '/select-user';
+
+  static const String citizenLogin = '/citizen/login';
+  static const String citizenRegister = '/citizen/register';
+  static const String citizenHome = '/citizen/home';
+  static const String citizenWelcome = '/citizen/welcome'; // For the 'registration success' screen
+  
+  static const String citizenHistory = '/citizen/history';
+  static const String citizenTrack = '/citizen/track';
+  static const String citizenDriverDetails = '/citizen/driver-details';
+  static const String citizenMap = '/citizen/map'; 
+
+  static const String driverLogin = '/driver/login';
+  static const String driverHome = '/driver/home';
+  static const String driverQrScan = '/driver/qrscan';
+  static const String driverData = '/driver/data';
 }
 
 
+// --- The App Router ---
 class AppRouter {
-  final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
-  final AuthBloc authBloc = getIt<AuthBloc>(); 
+  final RouteObserver<PageRoute> routeObserver;
+  final Listenable refreshListenable; 
 
+  AppRouter({
+    required this.routeObserver,
+    required this.refreshListenable, 
+  });
+  
   late final GoRouter router = GoRouter(
+    routes: _routes,
     initialLocation: AppRoutePaths.splash,
-    navigatorKey: rootNavigatorKey,
-
-    // 2. REDIRECTION LOGIC (FIXED)
-    redirect: (BuildContext context, GoRouterState state) {
-      final authState = authBloc.state; 
-
-      final isLoggingIn = state.uri.toString() == AppRoutePaths.login;
-      final isRegistering = state.uri.toString() == AppRoutePaths.register;
-      final isSplash = state.uri.toString() == AppRoutePaths.splash;
-
-      // 1. If the AuthBloc is still checking status, force splash screen
-      if (authState is AuthStateInitial) {
-        return isSplash ? null : AppRoutePaths.splash;
-      }
-
-      // 2. If logged out:
-      // THIS IS THE FIX: We check for AuthStateUnauthenticated
-      if (authState is AuthStateUnauthenticated) {
-        // Allow access to Login/Register, otherwise redirect to Login
-        return isLoggingIn || isRegistering ? null : AppRoutePaths.login;
-      }
-
-      // 3. If logged in:
-      // We check for the specific state from your BLoC
-      if (authState is AuthStateAuthenticatedCitizen) {
-        // If on splash, login, or register, send to Dashboard
-        if (isLoggingIn || isSplash || isRegistering) {
-             return AppRoutePaths.citizenDashboard;
-        }
-        // Otherwise, user is logged in and going to a valid page. Allow it.
-        return null;
-      }
-      
-      // Default fallback
-      return null;
-    },
-
-    // 3. LISTEN TO STATE
-    refreshListenable: GoRouterRefreshStream(authBloc.stream),
-
-    // 4. ROUTE DEFINITIONS (From your repo)
-    routes: [
-      GoRoute(
-        path: AppRoutePaths.splash,
-        builder: (context, state) => const SplashScreen(),
-      ),
-      GoRoute(
-        path: AppRoutePaths.login,
-        builder: (context, state) => const LoginScreen(),
-      ),
-      GoRoute(
-        path: AppRoutePaths.register,
-        builder: (context, state) => const RegisterScreen(),
-      ),
-      GoRoute(
-        path: AppRoutePaths.citizenDashboard,
-        builder: (context, state) {
-           return CitizenDashboard(
-             userName: authBloc.state.userName ?? 'Citizen', 
-           );
-         },
-      ),
-      GoRoute(
-        path: AppRoutePaths.citizenHistory,
-        builder: (context, state) => const CalendarScreen(),
-      ),
-      GoRoute(
-        path: AppRoutePaths.citizenTrack,
-        builder: (context, state) => const TrackWasteScreen(),
-      ),
-      GoRoute(
-        path: AppRoutePaths.citizenDriverDetails,
-        builder: (context, state) {
-             return const DriverDetailsScreen(
-                 driverName: 'Rajesh Kumar', 
-                 vehicleNumber: 'TN 01 AB 1234', 
-             );
-         },
-      ),
-      GoRoute(
-        name: 'citizenMap',
-        path: AppRoutePaths.citizenMap,
-        builder: (context, state) {
-             final args = state.extra as Map<String, dynamic>? ?? {};
-             return MapScreen(
-                 driverName: args['driverName'] as String? ?? 'N/A',
-                 vehicleNumber: args['vehicleNumber'] as String? ?? 'N/A',
-             );
-         },
-      ),
-      // This "registration success" page
-      GoRoute(
-        path: '/home', 
-        builder: (context, state) {
-          return HomeScreen(
-            userName: authBloc.state.userName ?? 'Citizen',
-          );
-        },
-      ),
-    ],
+    debugLogDiagnostics: true,
+    redirect: _redirect,
+    refreshListenable: refreshListenable, 
+    observers: [routeObserver],
   );
-}
-
-// --- Helper class to integrate Bloc Stream with GoRouter refresh listener ---
-class GoRouterRefreshStream extends ChangeNotifier {
-  late final StreamSubscription<dynamic> _subscription;
-
-  GoRouterRefreshStream(Stream<dynamic> stream) {
-    notifyListeners();
-    _subscription = stream.asBroadcastStream().listen(
-          (dynamic _) => notifyListeners(),
+  
+  // Define all routes
+  final List<RouteBase> _routes = [
+    GoRoute(
+      path: AppRoutePaths.splash,
+      builder: (context, state) => const SplashScreen(),
+    ),
+    GoRoute(
+      path: AppRoutePaths.selectUser,
+      builder: (context, state) => const UserSelectionScreen(),
+    ),
+    
+    // --- Module 1: Citizen Routes ---
+    GoRoute(
+      path: AppRoutePaths.citizenLogin,
+      builder: (context, state) => const LoginScreen(),
+    ),
+    GoRoute(
+      path: AppRoutePaths.citizenRegister,
+      builder: (context, state) => const RegisterScreen(),
+    ),
+    GoRoute(
+      path: AppRoutePaths.citizenWelcome, 
+      builder: (context, state) {
+        final authState = context.read<AuthBloc>().state;
+        String userName = "Citizen";
+        if (authState is AuthStateAuthenticated) {
+          userName = authState.userName ?? "Citizen"; 
+        }
+        return HomeScreen(userName: userName);
+      },
+    ),
+    GoRoute(
+      path: AppRoutePaths.citizenHome,
+      builder: (context, state) {
+        final authState = context.read<AuthBloc>().state;
+        String userName = "Citizen"; 
+        if (authState is AuthStateAuthenticated) {
+          userName = authState.userName ?? "Citizen";
+        }
+        return CitizenDashboard(userName: userName); 
+      },
+    ),
+    GoRoute(
+      path: AppRoutePaths.citizenHistory,
+      builder: (context, state) => const CalendarScreen(),
+    ),
+    GoRoute(
+      path: AppRoutePaths.citizenTrack,
+      builder: (context, state) => const TrackWasteScreen(),
+    ),
+    GoRoute(
+      path: AppRoutePaths.citizenDriverDetails,
+      builder: (context, state) {
+        return const DriverDetailsScreen(
+          driverName: 'Rajesh Kumar', 
+          vehicleNumber: 'TN 01 AB 1234',
         );
-  }
+      }
+    ),
+     GoRoute(
+      name: 'citizenMap',
+      path: AppRoutePaths.citizenMap,
+      builder: (context, state) {
+        final data = state.extra as Map<String, dynamic>? ?? {};
+        return MapScreen(
+          driverName: data['driverName'],
+          vehicleNumber: data['vehicleNumber'],
+        );
+      },
+    ),
 
-  @override
-  void dispose() {
-    _subscription.cancel();
-    super.dispose();
+
+    // --- Module 2: Driver Routes ---
+    GoRoute(
+      path: AppRoutePaths.driverLogin,
+      builder: (context, state) => const DriverLoginScreen(),
+    ),
+    GoRoute(
+      path: AppRoutePaths.driverHome,
+      builder: (context, state) => const DriverHomeScreen(),
+    ),
+    GoRoute(
+      path: AppRoutePaths.driverQrScan,
+      builder: (context, state) => const DriverQrScanScreen(),
+    ),
+    GoRoute(
+      path: AppRoutePaths.driverData,
+      builder: (context, state) {
+        final data = state.extra as Map<String, dynamic>? ?? {};
+        return DriverDataScreen(
+          customerId: data['customerId'] ?? 'Error',
+          customerName: data['customerName'] ?? 'Error',
+          contactNo: data['contactNo'] ?? 'Error',
+          latitude: data['latitude'] ?? '0.0',
+          longitude: data['longitude'] ?? '0.0',
+        );
+      },
+    ),
+  ];
+
+  // --- Redirect Logic (with Role-Based Routing) ---
+  String? _redirect(BuildContext context, GoRouterState state) {
+    final authState = context.read<AuthBloc>().state;
+    final location = state.matchedLocation;
+
+    // 1. Splash Screen Logic
+    if (location == AppRoutePaths.splash) {
+      if (authState is AuthStateAuthenticated) {
+        // --- THIS IS THE CRITICAL FIX ---
+        if (authState.role == UserRole.driver) {
+          return AppRoutePaths.driverHome;
+        }
+        if (authState.role == UserRole.citizen) {
+          return AppRoutePaths.citizenHome;
+        }
+        // --- END FIX ---
+      }
+      if (authState is AuthStateUnauthenticated || authState is AuthStateFailure) {
+        return AppRoutePaths.selectUser;
+      }
+      return null; // Stay on splash while AuthStateInitial
+    }
+
+    // 2. Login Logic
+    final isLoggingIn = (location == AppRoutePaths.citizenLogin ||
+                         location == AppRoutePaths.citizenRegister ||
+                         location == AppRoutePaths.driverLogin ||
+                         location == AppRoutePaths.selectUser);
+                         
+    if (isLoggingIn && authState is AuthStateAuthenticated) {
+        // --- THIS IS THE CRITICAL FIX ---
+        if (authState.role == UserRole.driver) {
+          return AppRoutePaths.driverHome;
+        }
+        if (authState.role == UserRole.citizen) {
+          return AppRoutePaths.citizenHome;
+        }
+        // --- END FIX ---
+    }
+
+    // 3. App Open Logic
+    if (authState is AuthStateUnauthenticated && !isLoggingIn && location != AppRoutePaths.splash) {
+      return AppRoutePaths.selectUser;
+    }
+    
+    // No redirect needed
+    return null;
   }
 }

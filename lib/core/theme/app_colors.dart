@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:iwms_citizen_app/core/constants.dart';
 
 class AppColors {
-  static const Color primaryBlue = Color(0xFF0D47A1); // ZIGMA Blue
+  static const Color primaryBlue = Color.fromARGB(255, 41, 160, 14); // ZIGMA Blue
   static const Color accentLight = Color(0xFFE8F5E9);
 
   static const Color textPrimary = Color(0xFF212121);

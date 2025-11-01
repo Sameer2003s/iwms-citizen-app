@@ -8,7 +8,7 @@ abstract class AuthEvent extends Equatable {
   List<Object> get props => [];
 }
 
-// Event triggered when the user attempts to log in
+// Event for CITIZEN login
 class AuthLoginRequested extends AuthEvent {
   final String mobileNumber;
   final String otp;
@@ -17,6 +17,20 @@ class AuthLoginRequested extends AuthEvent {
 
   @override
   List<Object> get props => [mobileNumber, otp];
+}
+
+// Event for DRIVER login
+class AuthDriverLoginRequested extends AuthEvent {
+  final String userName;
+  final String password;
+
+  const AuthDriverLoginRequested({
+    required this.userName,
+    required this.password,
+  });
+
+  @override
+  List<Object> get props => [userName, password];
 }
 
 // Event triggered when the user logs out

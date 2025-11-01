@@ -5,16 +5,13 @@ publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: '>=3.0.0 <4.0.0' # Using a compatible SDK range
+  sdk: '>=3.0.0 <4.0.0'
 
 dependencies:
   flutter:
     sdk: flutter
-  
-  # --- Keep Device Preview ---
-  device_preview: ^1.1.0 # You can use your exact version
 
-  # --- Core App Packages (From your repo) ---
+  # --- Core App Packages ---
   cupertino_icons: ^1.0.8
   go_router: ^16.3.0
   flutter_bloc: ^9.1.1
@@ -22,21 +19,30 @@ dependencies:
   get_it: ^8.2.0
   equatable: ^2.0.7
   
-  # --- Map Packages (From your repo - UNTOUCHED) ---
-  flutter_map: ^6.1.0
-  latlong2: ^0.9.1
-  
-  # --- Local Storage (From your repo - for Auth) ---
+  # --- UI & Utilities ---
+  device_preview: ^1.1.0 
+  google_fonts: ^4.0.4      # <-- DOWNGRADED to work with http ^0.13.3
   shared_preferences: ^2.5.3 
-
-  # --- NEW: Font package for our theme ---
-  google_fonts: ^6.2.1
+  
+  # --- Module 1 (Citizen) Packages ---
+  flutter_map: ^4.0.0        # <-- DOWNGRADED to work with http ^0.13.3
+  latlong2: ^0.8.0          # <-- DOWNGRADED to work with flutter_map ^4.0.0
+  
+  # --- Module 2 (Driver) Packages ---
+  mobile_scanner: ^6.0.0
+  geolocator: ^12.0.0
+  image_picker: ^0.8.5+3
+  permission_handler: ^12.0.1
+  http: ^0.13.3                  # <-- LOCKED to this old version
+  image: ^3.0.1                  # <-- LOCKED to this old version
+  path_provider: ^2.1.4
+  flutter_image_compress: ^2.4.0
+  flutter_bluetooth_serial: ^0.4.0 # <-- LOCKED to this correct, old version
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_launcher_icons: "^0.13.0"
-  
+  flutter_launcher_icons: "^0.10.0" # <-- DOWNGRADED to be compatible with image: ^3.0.1
   flutter_lints: ^5.0.0
 
 flutter_launcher_icons:
@@ -48,7 +54,6 @@ flutter_launcher_icons:
 flutter:
   uses-material-design: true
 
-  # --- Assets (From your repo - UNTOUCHED) ---
   assets:
     - assets/images/logo.png
     - assets/images/logo_bg.png
@@ -59,3 +64,5 @@ flutter:
     - assets/images/m_waste.png
     - assets/images/qr.png
     - assets/images/bg.png
+    - assets/images/driver_logo.png
+

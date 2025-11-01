@@ -3,10 +3,10 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 // Layered imports
-import '../../core/constants.dart'; 
-import '../../logic/auth/auth_bloc.dart';
-import '../../logic/auth/auth_event.dart';
-import '../../router/app_router.dart';
+import '../../../core/constants.dart'; 
+import '../../../logic/auth/auth_bloc.dart';
+import '../../../logic/auth/auth_event.dart';
+import '../../../router/app_router.dart';
 
 // Import local files (now siblings) for the actual pages, though GoRouter typically uses paths
 
@@ -32,7 +32,7 @@ class HomeScreen extends StatelessWidget {
 
   void _navigateToDashboard(BuildContext context) {
     // GoRouter handles the navigation and stack manipulation automatically
-    context.go(AppRoutePaths.citizenDashboard);
+    context.go(AppRoutePaths.citizenHome);
   }
 
   @override
@@ -110,17 +110,15 @@ class HomeScreen extends StatelessWidget {
               
               // --- NAVIGATION BUTTON ---
               TextButton(
-                onPressed: () => _navigateToDashboard(context),
-                child: const Text(
-                  'Skip to Dashboard',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: kPrimaryColor,
-                    fontWeight: FontWeight.bold,
-                    decoration: TextDecoration.underline,
-                  ),
-                ),
-              ),
+        onPressed: () { // <-- THIS IS THE FIX
+         context.go(AppRoutePaths.citizenHome);
+        },
+        
+        child: const Text(
+         'Skip to Dashboard',
+         // ... style
+        ),
+       ),
             ],
           ),
         ),

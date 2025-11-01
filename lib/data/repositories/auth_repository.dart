@@ -1,78 +1,115 @@
+// lib/data/repositories/auth_repository.dart
 import 'dart:async';
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-// Layered import
 import '../models/user_model.dart';
-
-// ⚠️ MOCK DATA FOR SIMULATION - REPLACE WITH REAL API RESPONSES
-const Map<String, dynamic> _mockUserData = {
-  'user_id': '12345',
-  'user_name': 'Citizen User', 
-  'role': 'citizen', 
-  'auth_token': 'mock_jwt_token_12345',
-};
+import '../../core/api_config.dart'; // Assuming this exists
+import '../../core/di.dart'; // Import getIt to access Dio
 
 class AuthRepository {
-  final Dio dioClient;
-  final Future<SharedPreferences> sharedPreferencesFuture; 
-  late SharedPreferences _sharedPreferences; 
+  final SharedPreferences _prefs;
+  final Dio _dio;
 
-  AuthRepository({
-    required this.dioClient,
-    required this.sharedPreferencesFuture, 
-  });
+  final Completer<void> _initCompleter = Completer();
 
-  // --- INITIALIZATION METHOD: Resolves the Future and is called by the Bloc ---
-  Future<void> initialize() async {
-    _sharedPreferences = await sharedPreferencesFuture;
+  AuthRepository({required SharedPreferences prefs, required Dio dio})
+      : _prefs = prefs,
+        _dio = dio {
+    _initCompleter.complete(); 
   }
-  
-  static const String _authTokenKey = 'auth_token';
 
-  // --- AUTHENTICATION (Login) ---
-  Future<UserModel> login({
-    required String mobileNumber,
-    required String otp,
-  }) async {
-    // 🛑 IMPLEMENTATION POINT: REPLACE MOCK LOGIN WITH ACTUAL API CALL
-    // Example of real implementation:
-    // final response = await dioClient.post('/api/login', data: {'mobile': mobileNumber, 'otp': otp});
-    // final user = UserModel.fromJson(response.data);
+  Future<void> initialize() => _initCompleter.future;
+
+  Future<UserModel?> getAuthenticatedUser() async {
+    final authToken = _prefs.getString('authToken');
+    final role = _prefs.getString('authRole');
+    final userName = _prefs.getString('authUserName');
+    final userId = _prefs.getString('authUserId'); 
+
+    if (authToken != null && role != null && userName != null && userId != null) {
+      return UserModel(
+        userId: userId,
+        userName: userName,
+        role: role,
+        authToken: authToken,
+      );
+    }
+    return null;
+  }
+
+  // --- CITIZEN MOCK LOGIN ---
+  Future<UserModel> login(
+      {required String mobileNumber, required String otp}) async {
+    final user = UserModel(
+      userId: 'mock-citizen-id-123',
+      userName: 'Citizen User',
+      role: 'citizen',
+      authToken: 'mock-citizen-token-123',
+    );
+
+    await _prefs.setString('authToken', user.authToken);
+    await _prefs.setString('authRole', user.role);
+    await _prefs.setString('authUserName', user.userName);
+    await _prefs.setString('authUserId', user.userId);
     
-    // --- MOCK IMPLEMENTATION START ---
-    final user = UserModel.fromJson(_mockUserData);
-    // Simulate successful API call delay
-    await Future.delayed(const Duration(milliseconds: 500)); 
-    // --- MOCK IMPLEMENTATION END ---
-    
-    await _sharedPreferences.setString(_authTokenKey, user.authToken);
     return user;
   }
 
-  // --- LOGOUT ---
-  Future<void> logout() async {
-    await _sharedPreferences.remove(_authTokenKey);
-  }
+  // --- REAL DRIVER LOGIN ---
+  Future<UserModel> loginDriver(
+      {required String userName, required String password}) async {
+    try {
+      final response = await _dio.post(
+        'http://zigma.in:80/d2d_app/login.php', 
+        data: {
+          'action': 'login',
+          'user_name': userName,
+          'password': password,
+        },
+        options: Options(
+          contentType: Headers.formUrlEncodedContentType,
+        ),
+      );
 
-  // --- FETCH USER ROLE (From local storage/API after token check) ---
-  Future<UserModel?> getAuthenticatedUser() async {
-    final token = _sharedPreferences.getString(_authTokenKey);
-    
-    if (token == null) {
-      return null;
+      Map<String, dynamic> result;
+      if (response.data is String) {
+        result = json.decode(response.data) as Map<String, dynamic>;
+      } else {
+        result = response.data as Map<String, dynamic>;
+      }
+
+      if (result['status'] == 1 && result['msg'] == "success_login") {
+        final staffName = result['data']?['staff'] ?? 'Driver';
+        final staffId = result['data']?['staffid'] ?? 'driver-id';
+        
+        final user = UserModel(
+          userId: staffId,
+          userName: staffName,
+          role: 'driver',
+          authToken: staffId, // Use staffId as the "token"
+        );
+
+        // Save to SharedPreferences
+        await _prefs.setString('authToken', user.authToken);
+        await _prefs.setString('authRole', user.role);
+        await _prefs.setString('authUserName', user.userName);
+        await _prefs.setString('authUserId', user.userId);
+
+        return user;
+      } else {
+        throw Exception(result['error'] ?? 'Invalid driver login');
+      }
+    } catch (e) {
+      throw Exception('Failed to log in as driver: $e');
     }
+  }
+  // --- END DRIVER LOGIN ---
 
-    // 🛑 IMPLEMENTATION POINT: REPLACE MOCK USER FETCH WITH ACTUAL API CALL (or JWT verification)
-    // Example of real implementation:
-    // dioClient.options.headers['Authorization'] = 'Bearer $token';
-    // final response = await dioClient.get('/api/user/profile');
-    // return UserModel.fromJson(response.data);
-
-    // --- MOCK IMPLEMENTATION START ---
-    // Simulate successful token validation/user fetch
-    await Future.delayed(const Duration(milliseconds: 300));
-    return UserModel.fromJson(_mockUserData);
-    // --- MOCK IMPLEMENTATION END ---
+  Future<void> logout() async {
+    await _prefs.remove('authToken');
+    await _prefs.remove('authRole');
+    await _prefs.remove('authUserName');
+    await _prefs.remove('authUserId');
   }
 }
