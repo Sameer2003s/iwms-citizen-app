@@ -1,8 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:iwms_citizen_app/logic/auth/auth_bloc.dart';
-import 'package:iwms_citizen_app/logic/auth/auth_event.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -31,14 +28,6 @@ class _SplashScreenState extends State<SplashScreen>
     );
 
     _animationController.forward();
-
-    // --- AUTH LOGIC ---
-    // Wait for the BLoC's internal init (e.g., SharedPreferences)
-    // The GoRouter redirect will handle navigation once the state changes.
-    context.read<AuthBloc>().initialization.then((_) {
-      // Once init is done, check the auth status
-      context.read<AuthBloc>().add(AuthStatusChecked());
-    });
   }
 
   @override
@@ -49,12 +38,12 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    // Use the theme from main.dart
     return Scaffold(
-      backgroundColor: Colors.white, 
+      backgroundColor: Colors.white,
       body: Stack(
         fit: StackFit.expand,
         children: [
+          // Logo and Title
           Center(
             child: FadeTransition(
               opacity: _fadeAnimation,
@@ -62,7 +51,7 @@ class _SplashScreenState extends State<SplashScreen>
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Image.asset(
-                    'assets/images/logo.png', // From your repo
+                    'assets/images/logo.png',
                     width: 150,
                     height: 150,
                   ),
@@ -70,48 +59,57 @@ class _SplashScreenState extends State<SplashScreen>
                   Text(
                     "Integrated Waste Management Suite",
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      color: const Color(0xFF0D47A1), // primaryBlue
-                    ),
+                          color: const Color(0xFF0D47A1), // primaryBlue
+                        ),
                     textAlign: TextAlign.center,
                   ),
                 ],
               ),
             ),
           ),
-          _buildPoweredBySection(),
+          
+          // --- THIS IS THE FIX ---
+          // Positioned MUST be the direct child of the Stack.
+          Positioned(
+            bottom: 40,
+            left: 0,
+            right: 0,
+            // The FadeTransition goes INSIDE the Positioned.
+            child: FadeTransition(
+              opacity: _fadeAnimation,
+              child: _buildPoweredByColumn(), // Call the refactored method
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildPoweredBySection() {
-    return Positioned(
-      bottom: 40,
-      left: 0,
-      right: 0,
-      child: Column(
-        children: [
-          Text(
-            "powered by",
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Image.asset(
-                'assets/images/zigma.png', // From your repo
-                height: 30,
-              ),
-              const SizedBox(width: 24),
-              Image.asset(
-                'assets/images/blueplanet.png', // From your repo
-                height: 30,
-              ),
-            ],
-          ),
-        ],
-      ),
+  // Refactored to only return the Column, not the Positioned
+  Widget _buildPoweredByColumn() {
+    return Column(
+      children: [
+        Text(
+          "powered by",
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Image.asset(
+              'assets/images/zigma.png',
+              height: 30,
+            ),
+            const SizedBox(width: 24),
+            Image.asset(
+              'assets/images/blueplanet.png',
+              height: 30,
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
+

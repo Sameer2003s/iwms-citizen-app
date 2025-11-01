@@ -22,7 +22,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.iwms_citizen_app"
-        minSdk = 21 // <-- CRITICAL FIX for older packages
+        minSdk = flutter.minSdkVersion // <-- CRITICAL FIX for older packages
         targetSdk = 34 
         versionCode = flutter.versionCode
         versionName = flutter.versionName

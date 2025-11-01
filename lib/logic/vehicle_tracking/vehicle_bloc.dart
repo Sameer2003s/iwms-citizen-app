@@ -55,7 +55,8 @@ class VehicleLoaded extends VehicleState {
   }) {
     return VehicleLoaded(
       vehicles ?? this.vehicles,
-      selectedVehicle: forceDeselect ? null : selectedVehicle ?? this.selectedVehicle,
+      selectedVehicle:
+          forceDeselect ? null : selectedVehicle ?? this.selectedVehicle,
       activeFilter: activeFilter ?? this.activeFilter,
     );
   }
@@ -76,12 +77,16 @@ class VehicleBloc extends Bloc<VehicleEvent, VehicleState> {
     on<VehicleSelectionUpdated>(_onSelectionUpdated);
 
     _startAutoRefresh();
+    // Add initial fetch
+    add(const VehicleFetchRequested(showLoading: true));
   }
 
   // --- Core Fetch Logic ---
-  Future<void> _fetchAndEmitVehicles(Emitter<VehicleState> emit,
-      {bool showLoading = true}) async {
-    if (showLoading && state is! VehicleLoaded) {
+  // THIS IS THE MAIN SYNTAX FIX
+  Future<void> _onFetchRequested(
+      VehicleFetchRequested event, Emitter<VehicleState> emit) async {
+    // For manual fetch, we show loading screen if not already loaded
+    if (event.showLoading && state is! VehicleLoaded) {
       emit(VehicleLoading());
     }
     try {
@@ -107,12 +112,6 @@ class VehicleBloc extends Bloc<VehicleEvent, VehicleState> {
   }
 
   // --- Event Handlers ---
-
-  void _onFetchRequested(
-      VehicleFetchRequested event, Emitter<VehicleState> emit) async {
-    // For manual fetch, we show loading screen if not already loaded
-    await _fetchAndEmitVehicles(emit, showLoading: true);
-  }
 
   void _onFilterUpdated(
       VehicleFilterUpdated event, Emitter<VehicleState> emit) {
@@ -144,7 +143,8 @@ class VehicleBloc extends Bloc<VehicleEvent, VehicleState> {
     }
 
     // Use copyWith to handle both selecting (selected) and deselecting (null)
-    emit(loadedState.copyWith(selectedVehicle: selected, forceDeselect: vehicleId == null));
+    emit(loadedState.copyWith(
+        selectedVehicle: selected, forceDeselect: vehicleId == null));
   }
 
   // --- Timer Management (Auto-refresh) ---
@@ -156,14 +156,15 @@ class VehicleBloc extends Bloc<VehicleEvent, VehicleState> {
       (timer) {
         // Only add a new fetch event if the BLoC is not already loading
         if (state is! VehicleLoading) {
-          add(VehicleFetchRequested());
+          // FIX: Add an event instead of calling the method directly
+          add(const VehicleFetchRequested(showLoading: false));
         }
       },
     );
   }
 
   // 🟢 START FIX: All logic below is simplified
-  
+
   // Helper to check the *clean* status from the model
   bool _isVehicleRunning(VehicleModel v) {
     return (v.status ?? '').toLowerCase() == 'running';
@@ -223,3 +224,4 @@ class VehicleBloc extends Bloc<VehicleEvent, VehicleState> {
     return super.close();
   }
 }
+

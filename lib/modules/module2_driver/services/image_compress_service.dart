@@ -1,24 +1,25 @@
-// lib/modules/module2_driver/services/image_compress_service.dart
 import 'dart:io';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as p;
 
 class ImageCompressService {
-  static Future<File> compress(File file) async {
-    final dir = await getTemporaryDirectory();
-    final targetPath = p.join(dir.absolute.path, '${DateTime.now().millisecondsSinceEpoch}.jpg');
+  // This method name 'compressImage' must match the one used
+  // in DriverRepository
+  Future<XFile?> compressImage(XFile imageFile) async {
+    final tempDir = await getTemporaryDirectory();
+    final tempPath = tempDir.path;
+    final targetPath = '$tempPath/${DateTime.now().millisecondsSinceEpoch}.jpg';
 
     final result = await FlutterImageCompress.compressAndGetFile(
-      file.absolute.path,
+      imageFile.path,
       targetPath,
       quality: 70, // Adjust quality as needed
     );
 
-    if (result == null) {
-      return file; // Return original if compression fails
+    if (result != null) {
+      return XFile(result.path);
     }
-
-    return File(result.path);
+    return null;
   }
 }

@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 // 🟢 FIX: Import the VehicleFilter enum from constants.dart
-import '../../core/constants.dart'; 
+import '../../core/constants.dart';
 
 abstract class VehicleEvent extends Equatable {
   const VehicleEvent();
@@ -11,7 +11,14 @@ abstract class VehicleEvent extends Equatable {
 }
 
 // Event triggered to request fetching the vehicle list from the API
-class VehicleFetchRequested extends VehicleEvent {}
+class VehicleFetchRequested extends VehicleEvent {
+  // FIX: Add showLoading property
+  final bool showLoading;
+  const VehicleFetchRequested({this.showLoading = false});
+
+  @override
+  List<Object?> get props => [showLoading];
+}
 
 // Event triggered when the user wants to filter the displayed vehicles
 class VehicleFilterUpdated extends VehicleEvent {
@@ -30,3 +37,4 @@ class VehicleSelectionUpdated extends VehicleEvent {
   @override
   List<Object?> get props => [vehicleId];
 }
+

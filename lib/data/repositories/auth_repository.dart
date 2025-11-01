@@ -4,8 +4,8 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
-import '../../core/api_config.dart'; // Assuming this exists
-import '../../core/di.dart'; // Import getIt to access Dio
+// Note: No need to import api_config.dart or di.dart here
+// The Dio instance is passed in from di.dart
 
 class AuthRepository {
   final SharedPreferences _prefs;
@@ -16,7 +16,7 @@ class AuthRepository {
   AuthRepository({required SharedPreferences prefs, required Dio dio})
       : _prefs = prefs,
         _dio = dio {
-    _initCompleter.complete(); 
+    _initCompleter.complete();
   }
 
   Future<void> initialize() => _initCompleter.future;
@@ -25,7 +25,7 @@ class AuthRepository {
     final authToken = _prefs.getString('authToken');
     final role = _prefs.getString('authRole');
     final userName = _prefs.getString('authUserName');
-    final userId = _prefs.getString('authUserId'); 
+    final userId = _prefs.getString('authUserId');
 
     if (authToken != null && role != null && userName != null && userId != null) {
       return UserModel(
@@ -41,6 +41,7 @@ class AuthRepository {
   // --- CITIZEN MOCK LOGIN ---
   Future<UserModel> login(
       {required String mobileNumber, required String otp}) async {
+    // This is a mock login, so it's fine
     final user = UserModel(
       userId: 'mock-citizen-id-123',
       userName: 'Citizen User',
@@ -52,7 +53,7 @@ class AuthRepository {
     await _prefs.setString('authRole', user.role);
     await _prefs.setString('authUserName', user.userName);
     await _prefs.setString('authUserId', user.userId);
-    
+
     return user;
   }
 
@@ -61,7 +62,7 @@ class AuthRepository {
       {required String userName, required String password}) async {
     try {
       final response = await _dio.post(
-        'http://zigma.in:80/d2d_app/login.php', 
+        'http://zigma.in:80/d2d_app/login.php',
         data: {
           'action': 'login',
           'user_name': userName,
@@ -80,9 +81,12 @@ class AuthRepository {
       }
 
       if (result['status'] == 1 && result['msg'] == "success_login") {
-        final staffName = result['data']?['staff'] ?? 'Driver';
-        final staffId = result['data']?['staffid'] ?? 'driver-id';
-        
+        // --- THIS IS THE FIX ---
+        // The API returns 'user_name' and 'user_id', not 'staff' or 'staffid'
+        final staffName = result['data']?['user_name'] ?? 'Driver';
+        final staffId = result['data']?['user_id'] ?? 'driver-id';
+        // --- END FIX ---
+
         final user = UserModel(
           userId: staffId,
           userName: staffName,
@@ -113,3 +117,4 @@ class AuthRepository {
     await _prefs.remove('authUserId');
   }
 }
+

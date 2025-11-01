@@ -1,13 +1,11 @@
-// lib/modules/module2_driver/presentation/driver_login_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:iwms_citizen_app/router/app_router.dart';
-
-// Import Theme, BLoC
-import 'package:iwms_citizen_app/core/theme/app_colors.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:iwms_citizen_app/logic/auth/auth_bloc.dart';
 import 'package:iwms_citizen_app/logic/auth/auth_event.dart';
-import 'package:iwms_citizen_app/logic/auth/auth_state.dart';
+import 'package:iwms_citizen_app/logic/auth/auth_state.dart'; // <-- Import states
+import '../../../core/constants.dart' show kPrimaryColor;
+import '../../../core/theme/app_colors.dart'; // Assuming you have this file for kPrimaryColor
 
 class DriverLoginScreen extends StatefulWidget {
   const DriverLoginScreen({super.key});
@@ -19,157 +17,241 @@ class DriverLoginScreen extends StatefulWidget {
 class _DriverLoginScreenState extends State<DriverLoginScreen> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  // bool _isLoading = false; // BLoC will manage loading state
   bool _obscureText = true;
 
+  @override
+  void initState() {
+    super.initState();
+    _checkLocationServices();
+  }
+
+  Future<void> _checkLocationServices() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      if (mounted) _showLocationDialog();
+      return;
+    }
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        if (mounted) _showLocationDialog();
+        return;
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      if (mounted) _showLocationDialog();
+      return;
+    }
+  }
+
+  void _showLocationDialog() {
+    if (mounted) {
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('Enable Location Services'),
+            content: const Text(
+                'Location services are required for this app. Please enable location services.'),
+            actions: <Widget>[
+              TextButton(
+                child: const Text('OK'),
+                onPressed: () {
+                  Geolocator.openLocationSettings();
+                  Navigator.of(context).pop();
+                },
+              ),
+            ],
+          );
+        },
+      );
+    }
+  }
+
   void _login() {
-    if (_usernameController.text.isEmpty || _passwordController.text.isEmpty) {
+    final String userName = _usernameController.text;
+    final String password = _passwordController.text;
+
+    if (userName.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Please enter username and password.'),
-            backgroundColor: Colors.orange),
+        const SnackBar(content: Text('Please enter username and password')),
       );
       return;
     }
 
-    // The UI's only job is to dispatch the event.
     context.read<AuthBloc>().add(
           AuthDriverLoginRequested(
-            userName: _usernameController.text,
-            password: _passwordController.text,
+            userName: userName,
+            password: password,
           ),
         );
   }
 
   @override
-  Widget build(BuildContext Ctx) { // Renamed context to Ctx
-    final theme = Theme.of(Ctx);
-    
-    // Listen to the BLoC for state changes
-    return BlocListener<AuthBloc, AuthState>(
-      listener: (context, state) {
-        if (state is AuthStateFailure) {
-          // Show the error message from the BLoC
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-                content: Text(state.message),
-                backgroundColor: Colors.red),
-          );
-        }
-        // No need to listen for success, the router's redirect will handle it
-      },
-      child: Scaffold(
-        backgroundColor: Colors.white,
-        appBar: AppBar(
-          title: const Text("Driver Login"),
-          backgroundColor: AppColors.primaryBlue,
-        ),
-        body: Stack(
-          children: [
-            SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const SizedBox(height: 40),
-                  Image.asset(
-                    'assets/images/driver_logo.png',
-                    height: 120,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    "Welcome, Driver",
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primaryBlue,
-                    ),
-                  ),
-                  Text(
-                    "Log in to start your route",
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.titleMedium
-                        ?.copyWith(color: Colors.grey.shade600),
-                  ),
-                  const SizedBox(height: 40),
-                  TextFormField(
-                    controller: _usernameController,
-                    decoration: _buildInputDecoration(
-                        Ctx, "Username", Icons.person_outline),
-                  ),
-                  const SizedBox(height: 20),
-                  TextFormField(
-                    controller: _passwordController,
-                    obscureText: _obscureText,
-                    decoration:
-                        _buildInputDecoration(Ctx, "Password", Icons.lock_outline)
-                            .copyWith(
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscureText ? Icons.visibility : Icons.visibility_off,
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+      body: SafeArea(
+        child: BlocConsumer<AuthBloc, AuthState>(
+          listener: (context, state) {
+            // --- FIX: Use your correct state name 'AuthStateFailure' ---
+            if (state is AuthStateFailure) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                // --- FIX: Use the '.message' property from your state ---
+                SnackBar(
+                  content: Text(state.message),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+            // Note: Navigation on success is handled by the GoRouter redirect.
+          },
+          builder: (context, state) {
+            // --- FIX: Use your correct loading state 'AuthStateInitial' ---
+            final bool isLoading = state is AuthStateInitial;
+
+            return Stack(
+              children: [
+                SingleChildScrollView(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20.0, vertical: 20.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: <Widget>[
+                        SizedBox(
+                            height: MediaQuery.of(context).size.height * 0.1),
+                        Center(
+                          child: Image.asset(
+                            'assets/images/driver_logo.png', // Driver logo
+                            height: MediaQuery.of(context).size.height * 0.2,
+                          ),
                         ),
-                        onPressed: () {
-                          setState(() {
-                            _obscureText = !_obscureText;
-                          });
-                        },
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 40),
-                  // Read the BLoC state to show loading spinner
-                  BlocBuilder<AuthBloc, AuthState>(
-                    builder: (context, state) {
-                      final isLoading = state is AuthStateInitial;
-                      return SizedBox(
-                        height: 56,
-                        child: ElevatedButton(
-                          onPressed: isLoading ? null : _login,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.success,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                        SizedBox(
+                            height: MediaQuery.of(context).size.height * 0.02),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text("Username",
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    color: Color.fromRGBO(102, 102, 102, 1))),
+                            const SizedBox(height: 5),
+                            TextField(
+                              controller: _usernameController,
+                              decoration: const InputDecoration(
+                                fillColor: Color.fromRGBO(240, 240, 240, 1),
+                                filled: true,
+                                enabledBorder: OutlineInputBorder(
+                                  borderSide: BorderSide(
+                                      color: Color.fromRGBO(186, 186, 186, 1)),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderSide: BorderSide(
+                                      color: Color.fromRGBO(186, 186, 186, 1)),
+                                ),
+                                border: OutlineInputBorder(
+                                  borderSide: BorderSide(
+                                      color: Color.fromRGBO(186, 186, 186, 1)),
+                                ),
+                                disabledBorder: OutlineInputBorder(
+                                  borderSide: BorderSide(
+                                      color: Color.fromRGBO(186, 186, 186, 1)),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20.0),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text("Password",
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    color: Color.fromRGBO(102, 102, 102, 1))),
+                            const SizedBox(height: 5),
+                            TextField(
+                              obscureText: _obscureText,
+                              controller: _passwordController,
+                              decoration: InputDecoration(
+                                suffixIcon: GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      _obscureText = !_obscureText;
+                                    });
+                                  },
+                                  child: Icon(
+                                    _obscureText
+                                        ? Icons.visibility
+                                        : Icons.visibility_off,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                                fillColor: const Color.fromRGBO(240, 240, 240, 1),
+                                filled: true,
+                                enabledBorder: const OutlineInputBorder(
+                                  borderSide: BorderSide(
+                                      color: Color.fromRGBO(186, 186, 186, 1)),
+                                ),
+                                focusedBorder: const OutlineInputBorder(
+                                  borderSide: BorderSide(
+                                      color: Color.fromRGBO(186, 186, 186, 1)),
+                                ),
+                                border: const OutlineInputBorder(
+                                  borderSide: BorderSide(
+                                      color: Color.fromRGBO(186, 186, 186, 1)),
+                                ),
+                                disabledBorder: const OutlineInputBorder(
+                                  borderSide: BorderSide(
+                                      color: Color.fromRGBO(186, 186, 186, 1)),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 40.0),
+                        Container(
+                          height: MediaQuery.of(context).size.height * 0.07,
+                          width: MediaQuery.of(context).size.width * 1,
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.rectangle,
+                            borderRadius: BorderRadius.all(Radius.circular(0)),
+                          ),
+                          child: ElevatedButton(
+                            onPressed: isLoading ? null : _login,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor:
+                                  kPrimaryColor, // Use theme color
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                            child: const Text(
+                              'LOGIN',
+                              style:
+                                  TextStyle(fontSize: 12, color: Colors.white),
                             ),
                           ),
-                          child: isLoading
-                              ? const CircularProgressIndicator(color: Colors.white)
-                              : Text(
-                                  "LOGIN",
-                                  style: theme.textTheme.titleMedium?.copyWith(
-                                      color: Colors.white, fontWeight: FontWeight.bold),
-                                ),
                         ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 24),
-                  TextButton(
-                    onPressed: () {},
-                    child: Text(
-                      "Forgot Password?",
-                      style: TextStyle(color: AppColors.primaryBlue),
+                      ],
                     ),
                   ),
-                ],
-              ),
-            ),
-          ],
+                ),
+                if (isLoading)
+                  const Center(
+                    child: CircularProgressIndicator(),
+                  ),
+              ],
+            );
+          },
         ),
-      ),
-    );
-  }
-
-  InputDecoration _buildInputDecoration(
-      BuildContext context, String label, IconData icon) {
-    return InputDecoration(
-      labelText: label,
-      prefixIcon: Icon(icon, color: AppColors.primaryBlue.withOpacity(0.7)),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: AppColors.primaryBlue, width: 2),
       ),
     );
   }
