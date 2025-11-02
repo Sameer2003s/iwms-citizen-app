@@ -6,10 +6,9 @@ import 'package:iwms_citizen_app/logic/auth/auth_state.dart';
 import 'package:iwms_citizen_app/router/route_observer.dart';
 
 // --- Import all your screens ---
-// Splash & User Selection
+// (Imports remain the same)
 import 'package:iwms_citizen_app/modules/module1_citizen/citizen/splashscreen.dart';
 import 'package:iwms_citizen_app/presentation/user_selection/user_selection_screen.dart';
-// Module 1: Citizen
 import 'package:iwms_citizen_app/modules/module1_citizen/citizen/login.dart';
 import 'package:iwms_citizen_app/modules/module1_citizen/citizen/register.dart';
 import 'package:iwms_citizen_app/modules/module1_citizen/citizen/home.dart';
@@ -17,7 +16,6 @@ import 'package:iwms_citizen_app/modules/module1_citizen/citizen/calender.dart';
 import 'package:iwms_citizen_app/modules/module1_citizen/citizen/track_waste.dart';
 import 'package:iwms_citizen_app/modules/module1_citizen/citizen/driver_details.dart';
 import 'package:iwms_citizen_app/modules/module1_citizen/citizen/map.dart';
-// Module 2: Driver
 import 'package:iwms_citizen_app/modules/module2_driver/presentation/driver_login_screen.dart';
 import 'package:iwms_citizen_app/modules/module2_driver/presentation/driver_home_screen.dart';
 import 'package:iwms_citizen_app/modules/module2_driver/presentation/driver_qr_scan_screen.dart';
@@ -25,6 +23,7 @@ import 'package:iwms_citizen_app/modules/module2_driver/presentation/driver_data
 
 // --- Define static route paths ---
 class AppRoutePaths {
+  // (Paths remain the same)
   static const String splash = '/';
   static const String selectUser = '/select-user';
 
@@ -48,14 +47,111 @@ class AppRoutePaths {
 class AppRouter {
   final AuthBloc authBloc;
   final RouteObserver<PageRoute> routeObserver;
-  late final GoRouter router; // <-- Keep this as late final
+  late final GoRouter router;
+  late final List<RouteBase> _routes; // <-- **FIX 1: Change to late final**
 
   AppRouter({
     required this.authBloc,
     required this.routeObserver,
     required Listenable refreshListenable,
   }) {
-    // --- FIX: Initialize the router HERE, inside the constructor ---
+    // --- **FIX 2: Initialize _routes INSIDE the constructor** ---
+    _routes = [
+      GoRoute(
+        path: AppRoutePaths.splash,
+        builder: (context, state) => const SplashScreen(),
+      ),
+      GoRoute(
+        path: AppRoutePaths.selectUser,
+        builder: (context, state) => const UserSelectionScreen(),
+      ),
+
+      // --- Module 1: Citizen Routes ---
+      GoRoute(
+        path: AppRoutePaths.citizenLogin,
+        builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: AppRoutePaths.citizenRegister,
+        builder: (context, state) => const RegisterScreen(),
+      ),
+      GoRoute(
+        path: AppRoutePaths.citizenWelcome,
+        builder: (context, state) {
+          final authState = authBloc.state; // <-- This is now valid
+          String userName = (authState is AuthStateAuthenticated)
+              ? authState.userName ?? "Citizen"
+              : "Citizen";
+          return HomeScreen(userName: userName);
+        },
+      ),
+      GoRoute(
+        path: AppRoutePaths.citizenHome,
+        builder: (context, state) {
+          final authState = authBloc.state; // <-- This is now valid
+          String userName = (authState is AuthStateAuthenticated)
+              ? authState.userName ?? "Citizen"
+              : "Citizen";
+          return CitizenDashboard(userName: userName);
+        },
+      ),
+      GoRoute(
+        path: AppRoutePaths.citizenHistory,
+        builder: (context, state) => const CalendarScreen(),
+      ),
+      GoRoute(
+        path: AppRoutePaths.citizenTrack,
+        builder: (context, state) => const TrackWasteScreen(),
+      ),
+      GoRoute(
+          path: AppRoutePaths.citizenDriverDetails,
+          builder: (context, state) {
+            return const DriverDetailsScreen(
+              driverName: 'Rajesh Kumar',
+              vehicleNumber: 'TN 01 AB 1234',
+            );
+          }),
+      GoRoute(
+        name: 'citizenMap',
+        path: AppRoutePaths.citizenMap,
+        builder: (context, state) {
+          final data = state.extra as Map<String, dynamic>? ?? {};
+          return MapScreen(
+            driverName: data['driverName'],
+            vehicleNumber: data['vehicleNumber'],
+          );
+        },
+      ),
+
+      // --- Module 2: Driver Routes ---
+      GoRoute(
+        path: AppRoutePaths.driverLogin,
+        builder: (context, state) => const DriverLoginScreen(),
+      ),
+      GoRoute(
+        path: AppRoutePaths.driverHome,
+        builder: (context, state) => const DriverHomeScreen(),
+      ),
+      GoRoute(
+        path: AppRoutePaths.driverQrScan,
+        builder: (context, state) => const DriverQrScanScreen(),
+      ),
+      GoRoute(
+        path: AppRoutePaths.driverData,
+        builder: (context, state) {
+          final data = state.extra as Map<String, dynamic>? ?? {};
+          return DriverDataScreen(
+            customerId: data['customerId'] ?? 'Error',
+            customerName: data['customerName'] ?? 'Error',
+            contactNo: data['contactNo'] ?? 'Error',
+            latitude: data['latitude'] ?? '0.0',
+            longitude: data['longitude'] ?? '0.0',
+          );
+        },
+      ),
+    ];
+
+    // --- Initialize the router HERE, after _routes is set ---
     router = GoRouter(
       routes: _routes,
       initialLocation: AppRoutePaths.splash,
@@ -64,107 +160,12 @@ class AppRouter {
       refreshListenable: refreshListenable,
       observers: [routeObserver],
     );
-    // --- END FIX ---
   }
 
-  // Define all routes
-  final List<RouteBase> _routes = [
-    GoRoute(
-      path: AppRoutePaths.splash,
-      builder: (context, state) => const SplashScreen(),
-    ),
-    GoRoute(
-      path: AppRoutePaths.selectUser,
-      builder: (context, state) => const UserSelectionScreen(),
-    ),
+  // --- **FIX 3: Remove the 'final' and list body from here** ---
+  // The _routes list is now initialized in the constructor.
 
-    // --- Module 1: Citizen Routes ---
-    GoRoute(
-      path: AppRoutePaths.citizenLogin,
-      builder: (context, state) => const LoginScreen(),
-    ),
-    GoRoute(
-      path: AppRoutePaths.citizenRegister,
-      builder: (context, state) => const RegisterScreen(),
-    ),
-    GoRoute(
-      path: AppRoutePaths.citizenWelcome,
-      builder: (context, state) {
-        final authState = authBloc.state;
-        // Use a fallback in case userName is null
-        String userName = (authState is AuthStateAuthenticated)
-            ? authState.userName ?? "Citizen"
-            : "Citizen";
-        return HomeScreen(userName: userName);
-      },
-    ),
-    GoRoute(
-      path: AppRoutePaths.citizenHome,
-      builder: (context, state) {
-        final authState = authBloc.state;
-        String userName = (authState is AuthStateAuthenticated)
-            ? authState.userName ?? "Citizen"
-            : "Citizen";
-        return CitizenDashboard(userName: userName);
-      },
-    ),
-    GoRoute(
-      path: AppRoutePaths.citizenHistory,
-      builder: (context, state) => const CalendarScreen(),
-    ),
-    GoRoute(
-      path: AppRoutePaths.citizenTrack,
-      builder: (context, state) => const TrackWasteScreen(),
-    ),
-    GoRoute(
-        path: AppRoutePaths.citizenDriverDetails,
-        builder: (context, state) {
-          return const DriverDetailsScreen(
-            driverName: 'Rajesh Kumar',
-            vehicleNumber: 'TN 01 AB 1234',
-          );
-        }),
-    GoRoute(
-      name: 'citizenMap',
-      path: AppRoutePaths.citizenMap,
-      builder: (context, state) {
-        final data = state.extra as Map<String, dynamic>? ?? {};
-        return MapScreen(
-          driverName: data['driverName'],
-          vehicleNumber: data['vehicleNumber'],
-        );
-      },
-    ),
-
-    // --- Module 2: Driver Routes ---
-    GoRoute(
-      path: AppRoutePaths.driverLogin,
-      builder: (context, state) => const DriverLoginScreen(),
-    ),
-    GoRoute(
-      path: AppRoutePaths.driverHome,
-      builder: (context, state) => const DriverHomeScreen(),
-    ),
-    GoRoute(
-      path: AppRoutePaths.driverQrScan,
-      builder: (context, state) => const DriverQrScanScreen(),
-    ),
-    GoRoute(
-      path: AppRoutePaths.driverData,
-      builder: (context, state) {
-        final data = state.extra as Map<String, dynamic>? ?? {};
-        return DriverDataScreen(
-          customerId: data['customerId'] ?? 'Error',
-          customerName: data['customerName'] ?? 'Error',
-          contactNo: data['contactNo'] ?? 'Error',
-          latitude: data['latitude'] ?? '0.0',
-          longitude: data['longitude'] ?? '0.0',
-        );
-      },
-    ),
-  ];
-
-  // --- Redirect Logic (with Role-Based Routing) ---
+  // --- Redirect Logic (This part was already correct) ---
   String? _redirect(BuildContext context, GoRouterState state) {
     // Use the authBloc instance directly
     final authState = authBloc.state;
@@ -214,4 +215,3 @@ class AppRouter {
     return null;
   }
 }
-
