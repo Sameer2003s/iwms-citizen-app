@@ -96,7 +96,7 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
         );
   }
 
-  @override
+ @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 255, 255, 255),
@@ -111,7 +111,6 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
                 ),
               );
             }
-            // Note: Navigation on success is handled by the GoRouter redirect.
           },
           builder: (context, state) {
             // --- FIX: Check for AuthStateLoading as well ---
@@ -122,7 +121,7 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
             return Stack(
               children: [
                 SingleChildScrollView(
-                  // ... (rest of your UI remains the same)
+                  // ... (rest of your UI is unchanged)
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 20.0, vertical: 20.0),

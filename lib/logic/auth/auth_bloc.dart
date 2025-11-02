@@ -52,10 +52,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthLoginRequested event,
     Emitter<AuthState> emit,
   ) async {
-    // --- FIX ---
-    emit(const AuthStateLoading()); // Set loading state
-    // --- END FIX ---
+    // --- FIX: Use AuthStateLoading ---
+    emit(const AuthStateLoading());
     try {
+      // CITIZEN login (mock)
       final user = await _authRepository.login(
         mobileNumber: event.mobileNumber,
         otp: event.otp,
@@ -70,10 +70,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthDriverLoginRequested event,
     Emitter<AuthState> emit,
   ) async {
-    // --- FIX ---
-    emit(const AuthStateLoading()); // Set loading state
-    // --- END FIX ---
+    // --- FIX: Use AuthStateLoading ---
+    emit(const AuthStateLoading());
     try {
+      // DRIVER login
       final user = await _authRepository.loginDriver(
         userName: event.userName,
         password: event.password,

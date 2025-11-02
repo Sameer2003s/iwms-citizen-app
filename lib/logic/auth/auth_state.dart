@@ -27,7 +27,7 @@ class AuthStateInitial extends AuthState {
   const AuthStateInitial() : super(role: UserRole.unknown);
 }
 
-// --- ADD THIS ---
+// --- ADD THIS NEW STATE ---
 // 1b. Loading State (for login in progress)
 class AuthStateLoading extends AuthState {
   const AuthStateLoading() : super(role: UserRole.unknown);

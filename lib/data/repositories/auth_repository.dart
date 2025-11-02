@@ -20,22 +20,16 @@ class AuthRepository {
   // --- MOCK LOGIN FOR CITIZEN ---
   Future<UserModel> login(
       {required String mobileNumber, required String otp}) async {
-    // 1. Simulate a network delay
     await Future.delayed(const Duration(seconds: 1));
-
-    // 2. Create a mock user
     final user = UserModel(
       userId: 'mock_citizen_123',
       userName: 'Mock Citizen',
       role: 'citizen',
       authToken: 'mock_token_for_citizen',
     );
-
-    // 3. Save the mock user
     await _prefs.setString(_userKey, user.userId);
     await _prefs.setString(_roleKey, user.role);
     await _prefs.setString(_nameKey, user.userName);
-
     return user;
   }
 
@@ -50,7 +44,7 @@ class AuthRepository {
           'user_name': userName,
           'password': password,
         },
-        // --- THIS IS THE FIX for "Invalid action" ---
+        // --- THIS IS THE FIX (from d2d_waste_collection) ---
         options: Options(
           contentType: Headers.formUrlEncodedContentType,
         ),
@@ -63,7 +57,7 @@ class AuthRepository {
           userId: userData['user_id'],
           userName: userData['user_name'],
           role: 'driver',
-          authToken: 'driver_token_${userData['user_id']}', // Use real data
+          authToken: 'driver_token_${userData['user_id']}',
         );
 
         await _prefs.setString(_userKey, user.userId);
@@ -72,11 +66,11 @@ class AuthRepository {
 
         return user;
       } else {
-        // This will now show the server's real error msg
-        throw Exception(response.data['error'] ?? 'Driver login failed');
+        // Show the server's error message
+        throw Exception(response.data['error'] ?? 'Invalid credentials');
       }
     } catch (e) {
-      // This catches Dio errors or the exception we threw above
+      // This will catch the error above or Dio errors
       throw Exception('Login failed. Please check your credentials.');
     }
   }

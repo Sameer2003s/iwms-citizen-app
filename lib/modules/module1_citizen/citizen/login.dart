@@ -96,12 +96,11 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  @override
+ @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        // --- FIX: Wrap with BlocConsumer ---
         child: BlocConsumer<AuthBloc, AuthState>(
           listener: (context, state) {
             if (state is AuthStateFailure) {
@@ -112,10 +111,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               );
             }
-            // Success navigation is handled by AppRouter
           },
           builder: (context, state) {
+            // --- FIX: Check for AuthStateLoading as well ---
             final bool isLoading = state is AuthStateLoading;
+            // --- END FIX ---
 
             return Stack(
               children: [
@@ -126,6 +126,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
+                      // ... (rest of your UI widgets are unchanged)
                       const SizedBox(height: 40),
                       _appLogoAsset(),
                       const SizedBox(height: 32),
@@ -215,8 +216,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         width: double.infinity,
                         height: 56,
                         child: ElevatedButton(
-                          // Disable button when loading
-                          onPressed: isLoading ? null : () => _handleContinue(context),
+                          onPressed:
+                              isLoading ? null : () => _handleContinue(context),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: kPrimaryColor,
                             shape: RoundedRectangleBorder(
@@ -252,7 +253,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     ],
                   ),
                 ),
-                // Show loading indicator
                 if (isLoading)
                   const Center(
                     child: CircularProgressIndicator(),
@@ -261,7 +261,6 @@ class _LoginScreenState extends State<LoginScreen> {
             );
           },
         ),
-        // --- END FIX ---
       ),
     );
   }

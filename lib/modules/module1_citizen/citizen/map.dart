@@ -2,13 +2,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:go_router/go_router.dart'; // <-- Import GoRouter
 import 'package:iwms_citizen_app/core/di.dart';
 import 'package:iwms_citizen_app/data/models/vehicle_model.dart';
 import 'package:iwms_citizen_app/logic/vehicle_tracking/vehicle_bloc.dart';
 import 'package:iwms_citizen_app/logic/vehicle_tracking/vehicle_event.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../core/constants.dart';
-import '../../../core/theme/app_colors.dart'; // Using your app's colors
+import '../../../core/theme/app_colors.dart';
 
 class MapScreen extends StatefulWidget {
   final String? driverName;
@@ -26,43 +27,146 @@ class MapScreen extends StatefulWidget {
 
 class _MapScreenState extends State<MapScreen> {
   final MapController _mapController = MapController();
-
-  // Your original location logic - good!
   final LatLng _userLocation = const LatLng(11.3410, 77.7172); // Erode
+
+  // --- NEW: Function to show details modal ---
+  void _showVehicleDetailsModal(BuildContext context, VehicleState state) {
+    List<VehicleModel> vehiclesToShow = [];
+    String title = "Vehicle Details";
+    VehicleFilter activeFilter = VehicleFilter.all;
+
+    if (state is VehicleLoaded) {
+      activeFilter = state.activeFilter;
+      // Apply the same filter logic as your map
+      vehiclesToShow = state.vehicles.where((v) {
+        final status = v.status?.toLowerCase() ?? 'no data';
+        switch (activeFilter) {
+          case VehicleFilter.all:
+            return true;
+          case VehicleFilter.running:
+            return status == 'running';
+          case VehicleFilter.idle:
+            return status == 'idle';
+          case VehicleFilter.parked:
+            return status == 'parked';
+          case VehicleFilter.noData:
+            return status == 'no data';
+        }
+      }).toList();
+      title = "${activeFilter.name.toUpperCase()} Vehicles";
+    }
+
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext bc) {
+        if (state is! VehicleLoaded) {
+          return const Center(child: Text('No vehicle data loaded.'));
+        }
+        if (vehiclesToShow.isEmpty) {
+          return Center(
+              child: Text(
+                  'No vehicles found for filter: ${activeFilter.name.toUpperCase()}'));
+        }
+
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child:
+                  Text(title, style: Theme.of(context).textTheme.titleLarge),
+            ),
+            const Divider(),
+            Expanded(
+              child: ListView.builder(
+                itemCount: vehiclesToShow.length,
+                itemBuilder: (context, index) {
+                  final vehicle = vehiclesToShow[index];
+                  final statusColor = context
+                      .read<VehicleBloc>()
+                      .getStatusColor(vehicle.status);
+                  return ListTile(
+                    leading: Icon(
+                      Icons.local_shipping,
+                      color: statusColor,
+                    ),
+                    title: Text(vehicle.registrationNumber ?? 'Unknown'),
+                    subtitle: Text('Last Update: ${vehicle.lastUpdated}'),
+                    trailing:
+                        Text(vehicle.status?.toUpperCase() ?? 'NO DATA'),
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      // Use getIt to create the BLoC
       create: (context) => getIt<VehicleBloc>(),
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Live Vehicle Tracking'),
+          // --- FIX: Added Back Button ---
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () => context.pop(),
+          ),
+          title:
+              const Text('Live Vehicle Tracking', style: TextStyle(color: Colors.white)),
+          backgroundColor: kPrimaryColor,
+          iconTheme: const IconThemeData(color: Colors.white),
+          actions: [
+            // --- FIX: Added Details Icon Button ---
+            BlocBuilder<VehicleBloc, VehicleState>(
+              builder: (context, state) {
+                return IconButton(
+                  tooltip: 'Show Vehicle List',
+                  icon: const Icon(Icons.list_alt_outlined, color: Colors.white),
+                  onPressed: () {
+                    _showVehicleDetailsModal(context, state);
+                  },
+                );
+              },
+            )
+          ],
         ),
         body: BlocBuilder<VehicleBloc, VehicleState>(
           builder: (context, state) {
-            // Re-create the UI based on BLoC state
-            return Stack(
-              children: [
-                _buildMap(context, state),
-                _buildFilterChips(context, state),
-                // Show loading only if it's the very first load
-                if (state is VehicleLoading)
-                  const Center(child: CircularProgressIndicator()),
-                // Show error only if it's the very first load
-                if (state is VehicleError)
-                  Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Text(
-                        state.message,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.red, fontSize: 16),
+            // --- FIX: Wrap body in Padding and Card ---
+            return Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Card(
+                elevation: 4,
+                clipBehavior: Clip.antiAlias,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                // --- END FIX ---
+                child: Stack(
+                  children: [
+                    _buildMap(context, state),
+                    _buildFilterChips(context, state),
+                    if (state is VehicleLoading)
+                      const Center(child: CircularProgressIndicator()),
+                    if (state is VehicleError)
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Text(
+                            state.message,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                                color: Colors.red, fontSize: 16),
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                _buildVehicleInfoPanel(context, state),
-              ],
+                    _buildVehicleInfoPanel(context, state),
+                  ],
+                ),
+              ),
             );
           },
         ),
@@ -72,6 +176,7 @@ class _MapScreenState extends State<MapScreen> {
 
   // --- MAP WIDGET ---
   Widget _buildMap(BuildContext context, VehicleState state) {
+    // ... (This function remains exactly as you wrote it)
     List<VehicleModel> vehiclesToShow = [];
     VehicleModel? selectedVehicle;
     VehicleFilter activeFilter = VehicleFilter.all;
@@ -80,7 +185,6 @@ class _MapScreenState extends State<MapScreen> {
       selectedVehicle = state.selectedVehicle;
       activeFilter = state.activeFilter;
 
-      // Apply your filter logic
       vehiclesToShow = state.vehicles.where((v) {
         final status = v.status?.toLowerCase() ?? 'no data';
         switch (activeFilter) {
@@ -98,13 +202,12 @@ class _MapScreenState extends State<MapScreen> {
       }).toList();
     }
 
-    // Build markers
     final markers = vehiclesToShow.map((vehicle) {
       final isSelected = selectedVehicle?.id == vehicle.id;
       return Marker(
         width: 100,
         height: 80,
-        point: LatLng(vehicle.latitude, vehicle.longitude), // Uses non-nullable lat/lng
+        point: LatLng(vehicle.latitude, vehicle.longitude),
         child: GestureDetector(
           onTap: () {
             context
@@ -120,7 +223,6 @@ class _MapScreenState extends State<MapScreen> {
       );
     }).toList();
 
-    // Add user marker
     markers.add(Marker(
       width: 80,
       height: 80,
@@ -141,7 +243,6 @@ class _MapScreenState extends State<MapScreen> {
         initialCenter: _userLocation,
         initialZoom: 14.0,
         onTap: (tapPosition, point) {
-          // Deselect vehicle when tapping map
           context.read<VehicleBloc>().add(const VehicleSelectionUpdated(null));
         },
       ),
@@ -157,8 +258,9 @@ class _MapScreenState extends State<MapScreen> {
 
   // --- FILTER CHIPS ---
   Widget _buildFilterChips(BuildContext context, VehicleState state) {
+    // ... (This function remains exactly as you wrote it)
     if (state is! VehicleLoaded) {
-      return Container(); // Don't show filters unless loaded
+      return Container();
     }
 
     final bloc = context.read<VehicleBloc>();
@@ -177,8 +279,7 @@ class _MapScreenState extends State<MapScreen> {
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4.0),
               child: FilterChip(
-                label: Text(
-                    '${filter.name.toUpperCase()} ($count)'), // Use count variable
+                label: Text('${filter.name.toUpperCase()} ($count)'),
                 selected: isSelected,
                 onSelected: (bool selected) {
                   if (selected) {
@@ -202,8 +303,9 @@ class _MapScreenState extends State<MapScreen> {
 
   // --- VEHICLE INFO PANEL ---
   Widget _buildVehicleInfoPanel(BuildContext context, VehicleState state) {
+    // ... (This function remains exactly as you wrote it)
     if (state is! VehicleLoaded || state.selectedVehicle == null) {
-      return Container(); // No panel if no vehicle is selected
+      return Container();
     }
 
     final vehicle = state.selectedVehicle!;
@@ -223,7 +325,6 @@ class _MapScreenState extends State<MapScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                // --- FIX: Use 'registrationNumber' ---
                 vehicle.registrationNumber ?? 'Unknown Vehicle',
                 style: const TextStyle(
                     fontSize: 20,
@@ -251,13 +352,11 @@ class _MapScreenState extends State<MapScreen> {
               ),
               const Divider(height: 24),
               Text(
-                // --- FIX: Use 'wasteCapacityKg' as 'speed' is not available ---
                 'Load: ${vehicle.wasteCapacityKg ?? 0} kg',
                 style: const TextStyle(fontSize: 16, color: kTextColor),
               ),
               const SizedBox(height: 8),
               Text(
-                // --- FIX: Use 'lastUpdated' ---
                 'Last Update: ${vehicle.lastUpdated ?? 'N/A'}',
                 style: const TextStyle(fontSize: 16, color: kTextColor),
               ),
@@ -271,6 +370,7 @@ class _MapScreenState extends State<MapScreen> {
 
 // --- VEHICLE MARKER WIDGET ---
 class _VehicleMarker extends StatelessWidget {
+  // ... (This widget remains exactly as you wrote it)
   final VehicleModel vehicle;
   final bool isSelected;
   final Color Function(String?) getVehicleStatusColor;
@@ -288,7 +388,6 @@ class _VehicleMarker extends StatelessWidget {
 
     return Column(
       children: [
-        // Marker Icon
         AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           height: size,
@@ -315,7 +414,6 @@ class _VehicleMarker extends StatelessWidget {
             size: 20,
           ),
         ),
-        // Label
         if (isSelected)
           Padding(
             padding: const EdgeInsets.only(top: 4.0),
@@ -326,7 +424,6 @@ class _VehicleMarker extends StatelessWidget {
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text(
-                // --- FIX: Use 'registrationNumber' ---
                 vehicle.registrationNumber ?? '',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -341,4 +438,3 @@ class _VehicleMarker extends StatelessWidget {
     );
   }
 }
-
