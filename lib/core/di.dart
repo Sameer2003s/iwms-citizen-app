@@ -28,13 +28,17 @@ Future<void> setupDI() async {
 
   // --- Repositories ---
   getIt.registerLazySingleton(() => AuthRepository(
-        prefs: getIt<SharedPreferences>(),
-        dio: getIt<Dio>(),
+        // This one uses POSITIONAL arguments
+        getIt<Dio>(),
+        getIt<SharedPreferences>(),
       ));
 
   getIt.registerLazySingleton(() => DriverRepository(
+        // --- THIS IS THE FIX ---
+        // This one uses NAMED arguments
         dio: getIt<Dio>(),
         compressService: getIt<ImageCompressService>(),
+        // --- END FIX ---
       ));
 
   // --- Register your VehicleRepository ---
@@ -56,4 +60,3 @@ Future<void> setupDI() async {
         getIt<VehicleRepository>(),
       ));
 }
-

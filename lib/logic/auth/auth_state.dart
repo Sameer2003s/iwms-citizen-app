@@ -1,7 +1,7 @@
 // lib/logic/auth/auth_state.dart
 import 'package:equatable/equatable.dart';
 
-// The Roles for the whole "super app"
+// ... (UserRole enum remains the same)
 enum UserRole {
   unknown,
   unauthenticated,
@@ -13,7 +13,6 @@ enum UserRole {
   admin,
 }
 
-// The base class for all Auth States.
 class AuthState extends Equatable {
   final UserRole role;
   final String? userName;
@@ -24,10 +23,17 @@ class AuthState extends Equatable {
   List<Object?> get props => [role, userName];
 }
 
-// 1. Initial/Loading State
+// 1. Initial State (for app startup)
 class AuthStateInitial extends AuthState {
   const AuthStateInitial() : super(role: UserRole.unknown);
 }
+
+// --- ADD THIS NEW STATE ---
+// 1b. Loading State (for login in progress)
+class AuthStateLoading extends AuthState {
+  const AuthStateLoading() : super(role: UserRole.unknown);
+}
+// --- END ADD ---
 
 // 2. Not Logged In
 class AuthStateUnauthenticated extends AuthState {

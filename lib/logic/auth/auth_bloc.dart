@@ -1,37 +1,36 @@
 // lib/logic/auth/auth_bloc.dart
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../data/repositories/auth_repository.dart'; 
+import '../../data/repositories/auth_repository.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final AuthRepository _authRepository;
-  
-  final Future<void> initialization; 
 
-  AuthBloc({required AuthRepository authRepository}) 
-      : _authRepository = authRepository, 
-        initialization = authRepository.initialize(), 
+  final Future<void> initialization;
+
+  AuthBloc({required AuthRepository authRepository})
+      : _authRepository = authRepository,
+        initialization = authRepository.initialize(),
         super(const AuthStateInitial()) {
-    
     on<AuthStatusChecked>(_onStatusChecked);
     on<AuthLoginRequested>(_onLoginRequested);
     on<AuthLogoutRequested>(_onLogoutRequested);
-    on<AuthDriverLoginRequested>(_onDriverLoginRequested); // <-- Handler added
+    on<AuthDriverLoginRequested>(_onDriverLoginRequested);
 
     initialization.then((_) {
-      add(AuthStatusChecked()); 
+      add(AuthStatusChecked());
     });
   }
-  
+
   Future<void> _onStatusChecked(
     AuthStatusChecked event,
     Emitter<AuthState> emit,
   ) async {
-    emit(const AuthStateInitial()); 
-    
-    final user = await _authRepository.getAuthenticatedUser(); 
+    emit(const AuthStateInitial());
+
+    final user = await _authRepository.getAuthenticatedUser();
 
     if (user != null) {
       switch (user.role) {
@@ -55,12 +54,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthLoginRequested event,
     Emitter<AuthState> emit,
   ) async {
-    emit(const AuthStateInitial()); // Set loading state
+    // --- FIX ---
+    emit(const AuthStateLoading()); // Set loading state
+    // --- END FIX ---
     try {
-      // CITIZEN login
       final user = await _authRepository.login(
-        mobileNumber: event.mobileNumber, 
-        otp: event.otp,                 
+        mobileNumber: event.mobileNumber,
+        otp: event.otp,
       );
       emit(AuthStateAuthenticatedCitizen(userName: user.userName));
     } catch (e) {
@@ -72,9 +72,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthDriverLoginRequested event,
     Emitter<AuthState> emit,
   ) async {
-    emit(const AuthStateInitial()); // Set loading state
+    // --- FIX ---
+    emit(const AuthStateLoading()); // Set loading state
+    // --- END FIX ---
     try {
-      // DRIVER login (now calls the repo)
       final user = await _authRepository.loginDriver(
         userName: event.userName,
         password: event.password,
@@ -89,7 +90,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthLogoutRequested event,
     Emitter<AuthState> emit,
   ) async {
-    await _authRepository.logout(); 
+    await _authRepository.logout();
     emit(const AuthStateUnauthenticated());
   }
 }

@@ -6,7 +6,6 @@ import 'package:iwms_citizen_app/logic/auth/auth_state.dart';
 import 'package:iwms_citizen_app/router/route_observer.dart';
 
 // --- Import all your screens ---
-// (Imports remain the same)
 import 'package:iwms_citizen_app/modules/module1_citizen/citizen/splashscreen.dart';
 import 'package:iwms_citizen_app/presentation/user_selection/user_selection_screen.dart';
 import 'package:iwms_citizen_app/modules/module1_citizen/citizen/login.dart';
@@ -23,20 +22,17 @@ import 'package:iwms_citizen_app/modules/module2_driver/presentation/driver_data
 
 // --- Define static route paths ---
 class AppRoutePaths {
-  // (Paths remain the same)
+  // ... (all your paths remain the same)
   static const String splash = '/';
   static const String selectUser = '/select-user';
-
   static const String citizenLogin = '/citizen/login';
   static const String citizenRegister = '/citizen/register';
   static const String citizenHome = '/citizen/home';
   static const String citizenWelcome = '/citizen/welcome';
-
   static const String citizenHistory = '/citizen/history';
   static const String citizenTrack = '/citizen/track';
   static const String citizenDriverDetails = '/citizen/driver-details';
   static const String citizenMap = '/citizen/map';
-
   static const String driverLogin = '/driver/login';
   static const String driverHome = '/driver/home';
   static const String driverQrScan = '/driver/qrscan';
@@ -48,14 +44,14 @@ class AppRouter {
   final AuthBloc authBloc;
   final RouteObserver<PageRoute> routeObserver;
   late final GoRouter router;
-  late final List<RouteBase> _routes; // <-- **FIX 1: Change to late final**
+  late final List<RouteBase> _routes; // <-- FIX 1: Make this 'late'
 
   AppRouter({
     required this.authBloc,
     required this.routeObserver,
     required Listenable refreshListenable,
   }) {
-    // --- **FIX 2: Initialize _routes INSIDE the constructor** ---
+    // --- FIX 2: Define the routes list *inside* the constructor ---
     _routes = [
       GoRoute(
         path: AppRoutePaths.splash,
@@ -65,7 +61,7 @@ class AppRouter {
         path: AppRoutePaths.selectUser,
         builder: (context, state) => const UserSelectionScreen(),
       ),
-
+      // ... (all your GoRoute definitions remain the same)
       // --- Module 1: Citizen Routes ---
       GoRoute(
         path: AppRoutePaths.citizenLogin,
@@ -78,7 +74,7 @@ class AppRouter {
       GoRoute(
         path: AppRoutePaths.citizenWelcome,
         builder: (context, state) {
-          final authState = authBloc.state; // <-- This is now valid
+          final authState = authBloc.state;
           String userName = (authState is AuthStateAuthenticated)
               ? authState.userName ?? "Citizen"
               : "Citizen";
@@ -88,7 +84,7 @@ class AppRouter {
       GoRoute(
         path: AppRoutePaths.citizenHome,
         builder: (context, state) {
-          final authState = authBloc.state; // <-- This is now valid
+          final authState = authBloc.state;
           String userName = (authState is AuthStateAuthenticated)
               ? authState.userName ?? "Citizen"
               : "Citizen";
@@ -150,8 +146,9 @@ class AppRouter {
         },
       ),
     ];
+    // --- END FIX 2 ---
 
-    // --- Initialize the router HERE, after _routes is set ---
+    // Initialize the router
     router = GoRouter(
       routes: _routes,
       initialLocation: AppRoutePaths.splash,
@@ -162,20 +159,18 @@ class AppRouter {
     );
   }
 
-  // --- **FIX 3: Remove the 'final' and list body from here** ---
-  // The _routes list is now initialized in the constructor.
-
-  // --- Redirect Logic (This part was already correct) ---
+  // --- Redirect Logic (with Role-Based Routing) ---
   String? _redirect(BuildContext context, GoRouterState state) {
-    // Use the authBloc instance directly
     final authState = authBloc.state;
     final location = state.matchedLocation;
     final onSplash = location == AppRoutePaths.splash;
 
-    // 1. While app is initializing, stay on splash
-    if (authState is AuthStateInitial) {
+    // --- FIX 3: Add AuthStateLoading check ---
+    // 1. While app is initializing OR a login is in progress, stay put.
+    if (authState is AuthStateInitial || authState is AuthStateLoading) {
       return null;
     }
+    // --- END FIX 3 ---
 
     final isLoggingIn = (location == AppRoutePaths.citizenLogin ||
         location == AppRoutePaths.citizenRegister ||
@@ -184,7 +179,6 @@ class AppRouter {
 
     // 2. If user is authenticated
     if (authState is AuthStateAuthenticated) {
-      // If they are on a login page or splash, redirect them to their home page
       if (isLoggingIn || onSplash) {
         if (authState.role == UserRole.driver) {
           return AppRoutePaths.driverHome;
@@ -193,21 +187,17 @@ class AppRouter {
           return AppRoutePaths.citizenHome;
         }
       }
-      // Otherwise, let them stay where they are
       return null;
     }
 
     // 3. If user is UNauthenticated
     if (authState is AuthStateUnauthenticated || authState is AuthStateFailure) {
-      // If they are on the splash screen, redirect to user selection
       if (onSplash) {
         return AppRoutePaths.selectUser;
       }
-      // If they are already on a login page, let them stay
       if (isLoggingIn) {
         return null;
       }
-      // If they are on any other secure page, redirect them
       return AppRoutePaths.selectUser;
     }
 

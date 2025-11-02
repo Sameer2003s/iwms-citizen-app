@@ -1,5 +1,4 @@
 // lib/data/models/user_model.dart
-
 import 'package:equatable/equatable.dart';
 
 // The data coming directly from the API or local database.
@@ -7,13 +6,13 @@ class UserModel extends Equatable {
   final String userId;
   final String userName;
   final String role; // e.g., "citizen", "driver", "admin"
-  final String authToken;
+  final String? authToken; // This is the nullable string
 
   const UserModel({
     required this.userId,
     required this.userName,
     required this.role,
-    required this.authToken,
+    this.authToken, // This is now optional
   });
 
   // Example factory for creating a user from an API response map
@@ -22,7 +21,7 @@ class UserModel extends Equatable {
       userId: json['user_id'] as String,
       userName: json['user_name'] as String,
       role: json['role'] as String,
-      authToken: json['auth_token'] as String,
+      authToken: json['auth_token'] as String?, // Handles null
     );
   }
 
@@ -36,6 +35,9 @@ class UserModel extends Equatable {
     };
   }
 
+  // --- THIS IS THE FIX ---
+  // Change 'List<Object>' to 'List<Object?>' to allow nulls
   @override
-  List<Object> get props => [userId, userName, role, authToken];
+  List<Object?> get props => [userId, userName, role, authToken];
+  // --- END FIX ---
 }

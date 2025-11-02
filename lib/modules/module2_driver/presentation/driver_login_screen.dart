@@ -1,13 +1,15 @@
+// lib/modules/module2_driver/presentation/driver_login_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:iwms_citizen_app/logic/auth/auth_bloc.dart';
 import 'package:iwms_citizen_app/logic/auth/auth_event.dart';
-import 'package:iwms_citizen_app/logic/auth/auth_state.dart'; // <-- Import states
+import 'package:iwms_citizen_app/logic/auth/auth_state.dart';
 import '../../../core/constants.dart' show kPrimaryColor;
-import '../../../core/theme/app_colors.dart'; // Assuming you have this file for kPrimaryColor
+import '../../../core/theme/app_colors.dart';
 
 class DriverLoginScreen extends StatefulWidget {
+  // ... (rest of the StatefulWidget is the same)
   const DriverLoginScreen({super.key});
 
   @override
@@ -15,6 +17,7 @@ class DriverLoginScreen extends StatefulWidget {
 }
 
 class _DriverLoginScreenState extends State<DriverLoginScreen> {
+  // ... (all functions like _login, initState, etc. remain the same)
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _obscureText = true;
@@ -100,10 +103,8 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
       body: SafeArea(
         child: BlocConsumer<AuthBloc, AuthState>(
           listener: (context, state) {
-            // --- FIX: Use your correct state name 'AuthStateFailure' ---
             if (state is AuthStateFailure) {
               ScaffoldMessenger.of(context).showSnackBar(
-                // --- FIX: Use the '.message' property from your state ---
                 SnackBar(
                   content: Text(state.message),
                   backgroundColor: Colors.red,
@@ -113,12 +114,15 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
             // Note: Navigation on success is handled by the GoRouter redirect.
           },
           builder: (context, state) {
-            // --- FIX: Use your correct loading state 'AuthStateInitial' ---
-            final bool isLoading = state is AuthStateInitial;
+            // --- FIX: Check for AuthStateLoading as well ---
+            final bool isLoading =
+                state is AuthStateInitial || state is AuthStateLoading;
+            // --- END FIX ---
 
             return Stack(
               children: [
                 SingleChildScrollView(
+                  // ... (rest of your UI remains the same)
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 20.0, vertical: 20.0),
