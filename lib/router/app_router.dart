@@ -24,14 +24,17 @@ import 'package:iwms_citizen_app/modules/module2_driver/presentation/driver_data
 class AppRoutePaths {
   static const String splash = '/';
   static const String selectUser = '/select-user';
+
   static const String citizenLogin = '/citizen/login';
   static const String citizenRegister = '/citizen/register';
   static const String citizenHome = '/citizen/home';
   static const String citizenWelcome = '/citizen/welcome';
+
   static const String citizenHistory = '/citizen/history';
   static const String citizenTrack = '/citizen/track';
   static const String citizenDriverDetails = '/citizen/driver-details';
   static const String citizenMap = '/citizen/map';
+
   static const String driverLogin = '/driver/login';
   static const String driverHome = '/driver/home';
   static const String driverQrScan = '/driver/qrscan';
@@ -43,14 +46,15 @@ class AppRouter {
   final AuthBloc authBloc;
   final RouteObserver<PageRoute> routeObserver;
   late final GoRouter router;
-  late final List<RouteBase> _routes;
+  late final List<RouteBase> _routes; // <-- This is correct
 
   AppRouter({
     required this.authBloc,
     required this.routeObserver,
     required Listenable refreshListenable,
   }) {
-    // Define routes inside the constructor
+    // --- Define the routes list *inside* the constructor ---
+    // (This part was already correct in your repo)
     _routes = [
       GoRoute(
         path: AppRoutePaths.splash,
@@ -60,6 +64,8 @@ class AppRouter {
         path: AppRoutePaths.selectUser,
         builder: (context, state) => const UserSelectionScreen(),
       ),
+
+      // ... all your other GoRoutes are correct ...
       GoRoute(
         path: AppRoutePaths.citizenLogin,
         builder: (context, state) => const LoginScreen(),
@@ -153,13 +159,13 @@ class AppRouter {
     );
   }
 
-  // --- Redirect Logic ---
+  // --- Redirect Logic (with Role-Based Routing) ---
   String? _redirect(BuildContext context, GoRouterState state) {
     final authState = authBloc.state;
     final location = state.matchedLocation;
     final onSplash = location == AppRoutePaths.splash;
 
-    // --- FIX: Add AuthStateLoading check ---
+    // --- THIS IS THE FIX ---
     // 1. While app is initializing OR a login is in progress, stay put.
     if (authState is AuthStateInitial || authState is AuthStateLoading) {
       return null;
@@ -173,6 +179,7 @@ class AppRouter {
 
     // 2. If user is authenticated
     if (authState is AuthStateAuthenticated) {
+      // If they are on a login page or splash, redirect to home
       if (isLoggingIn || onSplash) {
         if (authState.role == UserRole.driver) {
           return AppRoutePaths.driverHome;
@@ -181,17 +188,21 @@ class AppRouter {
           return AppRoutePaths.citizenHome;
         }
       }
+      // Otherwise, let them stay
       return null;
     }
 
     // 3. If user is UNauthenticated
     if (authState is AuthStateUnauthenticated || authState is AuthStateFailure) {
+      // If on splash, go to user selection
       if (onSplash) {
         return AppRoutePaths.selectUser;
       }
+      // If already on a login page, stay
       if (isLoggingIn) {
         return null;
       }
+      // If on any other secure page, redirect to login
       return AppRoutePaths.selectUser;
     }
 
