@@ -1,3 +1,4 @@
+// lib/modules/module1_citizen/citizen/login.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -6,8 +7,8 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants.dart';
 import '../../../logic/auth/auth_bloc.dart';
 import '../../../logic/auth/auth_event.dart';
+import '../../../logic/auth/auth_state.dart'; // <-- Import AuthState
 import '../../../router/app_router.dart';
-
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -19,20 +20,17 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final List<String> _countryCodes = ['+91', '+1', '+44', '+86', '+49'];
   String _selectedCountryCode = '+91';
-
-  final TextEditingController _mobileController = TextEditingController(); 
-  
+  final TextEditingController _mobileController = TextEditingController();
 
   void _handleContinue(BuildContext context) {
     final mobileNumber = _mobileController.text.trim();
-    if (mobileNumber.length == 10) { 
-      // Dispatch the Login Event with mobile and mock OTP
+    if (mobileNumber.length == 10) {
       context.read<AuthBloc>().add(
-        AuthLoginRequested(
-          mobileNumber: mobileNumber,
-          otp: '123456', // Mock OTP
-        ),
-      );
+            AuthLoginRequested(
+              mobileNumber: mobileNumber,
+              otp: '123456', // Mock OTP
+            ),
+          );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -42,9 +40,9 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     }
   }
-  
+
   void _navigateToRegister(BuildContext context) {
-    context.push(AppRoutePaths.citizenRegister); 
+    context.push(AppRoutePaths.citizenRegister);
   }
 
   Widget _appLogoAsset() {
@@ -55,13 +53,14 @@ class _LoginScreenState extends State<LoginScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         shape: BoxShape.circle,
-        border: Border.all(color: Colors.white, width: 2), 
+        border: Border.all(color: Colors.white, width: 2),
       ),
       child: Image.asset('assets/images/logo.png', width: 80, height: 80),
     );
   }
 
   Widget _buildCountryCodeDropdown() {
+    // ... (This widget is unchanged)
     return Container(
       height: 56,
       decoration: BoxDecoration(
@@ -99,131 +98,170 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // There is no BlocListener checking for AuthFailure, so this file is safe.
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 48.0), 
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const SizedBox(height: 40), 
-              
-              _appLogoAsset(),
-              const SizedBox(height: 32),
+        // --- FIX: Wrap with BlocConsumer ---
+        child: BlocConsumer<AuthBloc, AuthState>(
+          listener: (context, state) {
+            if (state is AuthStateFailure) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.message),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+            // Success navigation is handled by AppRouter
+          },
+          builder: (context, state) {
+            final bool isLoading = state is AuthStateLoading;
 
-              Text(
-                "Welcome to IWMS",
-                style: Theme.of(context).textTheme.titleLarge!.copyWith(color: kTextColor), 
-              ),
-              const SizedBox(height: 8),
-              Text(
-                "Enter your mobile number to get started or log in.",
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: kTextColor.withOpacity(0.7)), 
-              ),
-              const SizedBox(height: 40),
-
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: 8.0),
-                    child: Text(
-                      "Mobile Number",
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: kTextColor, 
-                      ),
-                    ),
-                  ),
-                  Row(
+            return Stack(
+              children: [
+                SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 24.0, vertical: 48.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      _buildCountryCodeDropdown(),
-                      Expanded(
-                        child: TextFormField(
-                          controller: _mobileController,
-                          keyboardType: TextInputType.phone,
-                          maxLength: 10,
-                          style: const TextStyle(color: kTextColor, fontSize: 16),
-                          decoration: InputDecoration(
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16.0),
-                            hintText: "Mobile Number (10 digits)",
-                            hintStyle: TextStyle(color: kPlaceholderColor, fontSize: 16),
-                            filled: true,
-                            fillColor: kContainerColor,
-                            counterText: '', 
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.only(
-                                topRight: Radius.circular(8.0),
-                                bottomRight: Radius.circular(8.0),
+                      const SizedBox(height: 40),
+                      _appLogoAsset(),
+                      const SizedBox(height: 32),
+                      Text(
+                        "Welcome to IWMS",
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleLarge!
+                            .copyWith(color: kTextColor),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        "Enter your mobile number to get started or log in.",
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodyMedium!
+                            .copyWith(color: kTextColor.withOpacity(0.7)),
+                      ),
+                      const SizedBox(height: 40),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Padding(
+                            padding: EdgeInsets.only(bottom: 8.0),
+                            child: Text(
+                              "Mobile Number",
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                                color: kTextColor,
                               ),
-                              borderSide: BorderSide(color: kBorderColor, width: 1),
                             ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.only(
-                                topRight: Radius.circular(8.0),
-                                bottomRight: Radius.circular(8.0),
+                          ),
+                          Row(
+                            children: [
+                              _buildCountryCodeDropdown(),
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _mobileController,
+                                  keyboardType: TextInputType.phone,
+                                  maxLength: 10,
+                                  style: const TextStyle(
+                                      color: kTextColor, fontSize: 16),
+                                  decoration: InputDecoration(
+                                    contentPadding: const EdgeInsets.symmetric(
+                                        horizontal: 16.0),
+                                    hintText: "Mobile Number (10 digits)",
+                                    hintStyle: TextStyle(
+                                        color: kPlaceholderColor, fontSize: 16),
+                                    filled: true,
+                                    fillColor: kContainerColor,
+                                    counterText: '',
+                                    border: OutlineInputBorder(
+                                      borderRadius: const BorderRadius.only(
+                                        topRight: Radius.circular(8.0),
+                                        bottomRight: Radius.circular(8.0),
+                                      ),
+                                      borderSide: BorderSide(
+                                          color: kBorderColor, width: 1),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: const BorderRadius.only(
+                                        topRight: Radius.circular(8.0),
+                                        bottomRight: Radius.circular(8.0),
+                                      ),
+                                      borderSide: BorderSide(
+                                          color: kBorderColor, width: 1),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: const BorderRadius.only(
+                                        topRight: Radius.circular(8.0),
+                                        bottomRight: Radius.circular(8.0),
+                                      ),
+                                      borderSide: BorderSide(
+                                          color: kPrimaryColor, width: 2),
+                                    ),
+                                  ),
+                                ),
                               ),
-                              borderSide: BorderSide(color: kBorderColor, width: 1), 
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 56,
+                        child: ElevatedButton(
+                          // Disable button when loading
+                          onPressed: isLoading ? null : () => _handleContinue(context),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: kPrimaryColor,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8.0),
                             ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.only(
-                                topRight: Radius.circular(8.0),
-                                bottomRight: Radius.circular(8.0),
-                              ),
-                              borderSide: BorderSide(color: kPrimaryColor, width: 2), 
-                            ),
+                          ),
+                          child: Text(
+                            "Continue (Send OTP)",
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelLarge!
+                                .copyWith(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                ),
                           ),
                         ),
                       ),
+                      const SizedBox(height: 32),
+                      GestureDetector(
+                        onTap: () => _navigateToRegister(context),
+                        child: Text(
+                          "New user? Registration is quick and easy.",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: kTextColor.withOpacity(0.7),
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 40),
                     ],
                   ),
-                ],
-              ),
-              const SizedBox(height: 20),
-
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton(
-                  onPressed: () => _handleContinue(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: kPrimaryColor, 
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8.0),
-                    ),
-                  ),
-                  child: Text(
-                    "Continue (Send OTP)",
-                    style: Theme.of(context).textTheme.labelLarge!.copyWith(
-                      color: Colors.white,
-                      fontSize: 16,
-                    ),
-                  ),
                 ),
-              ),
-              const SizedBox(height: 32),
-
-              GestureDetector(
-                onTap: () => _navigateToRegister(context),
-                child: Text(
-                  "New user? Registration is quick and easy.",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: kTextColor.withOpacity(0.7),
-                    decoration: TextDecoration.underline,
+                // Show loading indicator
+                if (isLoading)
+                  const Center(
+                    child: CircularProgressIndicator(),
                   ),
-                ),
-              ),
-              const SizedBox(height: 40),
-            ],
-          ),
+              ],
+            );
+          },
         ),
+        // --- END FIX ---
       ),
     );
   }

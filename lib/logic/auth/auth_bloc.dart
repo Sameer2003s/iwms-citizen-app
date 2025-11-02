@@ -7,7 +7,6 @@ import 'auth_state.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final AuthRepository _authRepository;
-
   final Future<void> initialization;
 
   AuthBloc({required AuthRepository authRepository})
@@ -29,7 +28,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     emit(const AuthStateInitial());
-
     final user = await _authRepository.getAuthenticatedUser();
 
     if (user != null) {

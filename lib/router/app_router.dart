@@ -22,7 +22,6 @@ import 'package:iwms_citizen_app/modules/module2_driver/presentation/driver_data
 
 // --- Define static route paths ---
 class AppRoutePaths {
-  // ... (all your paths remain the same)
   static const String splash = '/';
   static const String selectUser = '/select-user';
   static const String citizenLogin = '/citizen/login';
@@ -44,14 +43,14 @@ class AppRouter {
   final AuthBloc authBloc;
   final RouteObserver<PageRoute> routeObserver;
   late final GoRouter router;
-  late final List<RouteBase> _routes; // <-- FIX 1: Make this 'late'
+  late final List<RouteBase> _routes;
 
   AppRouter({
     required this.authBloc,
     required this.routeObserver,
     required Listenable refreshListenable,
   }) {
-    // --- FIX 2: Define the routes list *inside* the constructor ---
+    // Define routes inside the constructor
     _routes = [
       GoRoute(
         path: AppRoutePaths.splash,
@@ -61,8 +60,6 @@ class AppRouter {
         path: AppRoutePaths.selectUser,
         builder: (context, state) => const UserSelectionScreen(),
       ),
-      // ... (all your GoRoute definitions remain the same)
-      // --- Module 1: Citizen Routes ---
       GoRoute(
         path: AppRoutePaths.citizenLogin,
         builder: (context, state) => const LoginScreen(),
@@ -118,8 +115,6 @@ class AppRouter {
           );
         },
       ),
-
-      // --- Module 2: Driver Routes ---
       GoRoute(
         path: AppRoutePaths.driverLogin,
         builder: (context, state) => const DriverLoginScreen(),
@@ -146,7 +141,6 @@ class AppRouter {
         },
       ),
     ];
-    // --- END FIX 2 ---
 
     // Initialize the router
     router = GoRouter(
@@ -159,18 +153,18 @@ class AppRouter {
     );
   }
 
-  // --- Redirect Logic (with Role-Based Routing) ---
+  // --- Redirect Logic ---
   String? _redirect(BuildContext context, GoRouterState state) {
     final authState = authBloc.state;
     final location = state.matchedLocation;
     final onSplash = location == AppRoutePaths.splash;
 
-    // --- FIX 3: Add AuthStateLoading check ---
+    // --- FIX: Add AuthStateLoading check ---
     // 1. While app is initializing OR a login is in progress, stay put.
     if (authState is AuthStateInitial || authState is AuthStateLoading) {
       return null;
     }
-    // --- END FIX 3 ---
+    // --- END FIX ---
 
     final isLoggingIn = (location == AppRoutePaths.citizenLogin ||
         location == AppRoutePaths.citizenRegister ||

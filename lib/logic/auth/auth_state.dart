@@ -1,7 +1,6 @@
 // lib/logic/auth/auth_state.dart
 import 'package:equatable/equatable.dart';
 
-// ... (UserRole enum remains the same)
 enum UserRole {
   unknown,
   unauthenticated,
@@ -28,7 +27,7 @@ class AuthStateInitial extends AuthState {
   const AuthStateInitial() : super(role: UserRole.unknown);
 }
 
-// --- ADD THIS NEW STATE ---
+// --- ADD THIS ---
 // 1b. Loading State (for login in progress)
 class AuthStateLoading extends AuthState {
   const AuthStateLoading() : super(role: UserRole.unknown);
