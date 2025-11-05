@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
 // Layered imports
-import '../../../core/constants.dart'; 
-import '../../../logic/auth/auth_bloc.dart';
-import '../../../logic/auth/auth_event.dart';
+import '../../../logic/theme/theme_cubit.dart';
 import '../../../router/app_router.dart';
 
 // Import local files (now siblings) for the actual pages, though GoRouter typically uses paths
@@ -37,10 +35,33 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final primaryColor = colorScheme.primary;
+    final textColor = colorScheme.onSurface;
+    final mutedText = textColor.withValues(alpha: 0.7);
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Registration Successful'),
+        title: Text(
+          'Registration Successful',
+          style: theme.textTheme.titleLarge?.copyWith(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         automaticallyImplyLeading: false, 
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            image: DecorationImage(
+              image: AssetImage('assets/images/bgd.jpg'),
+              fit: BoxFit.cover,
+              alignment: Alignment.bottomCenter,
+            ),
+          ),
+        ),
       ),
       body: Center(
         child: Padding(
@@ -52,8 +73,8 @@ class HomeScreen extends StatelessWidget {
               Text(
                 'Welcome, $userName!',
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleLarge!.copyWith(
-                  color: kPrimaryColor,
+                style: theme.textTheme.titleLarge!.copyWith(
+                  color: primaryColor,
                   fontSize: 32,
                   fontWeight: FontWeight.w900,
                 ),
@@ -63,17 +84,20 @@ class HomeScreen extends StatelessWidget {
               // Display the actual logo
               _imageAsset('logo.png', width: 80, height: 80), 
               const SizedBox(height: 20),
-              
-              const Text(
+
+              Text(
                 'Registration Complete!',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: kTextColor),
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: textColor,
+                ),
               ),
               const SizedBox(height: 10),
               Text(
                 'Your unique QR code is now active for waste collection verification.',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 18, color: kTextColor.withOpacity(0.7)),
+                style: theme.textTheme.bodyLarge?.copyWith(color: mutedText),
               ),
               const SizedBox(height: 40),
               
@@ -81,12 +105,15 @@ class HomeScreen extends StatelessWidget {
                 width: double.infinity,
                 child: OutlinedButton.icon(
                   onPressed: () {},
-                  icon: const Icon(Icons.qr_code_2, color: kPrimaryColor),
-                  label: const Text('View My Collection QR Code'),
+                  icon: Icon(Icons.qr_code_2, color: primaryColor),
+                  label: Text(
+                    'View My Collection QR Code',
+                    style: theme.textTheme.labelLarge?.copyWith(color: primaryColor),
+                  ),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    side: const BorderSide(color: kPrimaryColor, width: 2),
-                    textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)
+                    side: BorderSide(color: primaryColor, width: 2),
+                    textStyle: theme.textTheme.labelLarge?.copyWith(color: primaryColor),
                   ),
                 ),
               ),
@@ -96,12 +123,15 @@ class HomeScreen extends StatelessWidget {
                 width: double.infinity,
                 child: OutlinedButton.icon(
                   onPressed: () {},
-                  icon: const Icon(Icons.feedback_outlined, color: kPrimaryColor),
-                  label: const Text('Raise a Grievance'),
+                  icon: Icon(Icons.feedback_outlined, color: primaryColor),
+                  label: Text(
+                    'Raise a Grievance',
+                    style: theme.textTheme.labelLarge?.copyWith(color: primaryColor),
+                  ),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    side: const BorderSide(color: kPrimaryColor, width: 2),
-                    textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)
+                    side: BorderSide(color: primaryColor, width: 2),
+                    textStyle: theme.textTheme.labelLarge?.copyWith(color: primaryColor),
                   ),
                 ),
               ),
@@ -110,15 +140,17 @@ class HomeScreen extends StatelessWidget {
               
               // --- NAVIGATION BUTTON ---
               TextButton(
-        onPressed: () { // <-- THIS IS THE FIX
-         context.go(AppRoutePaths.citizenHome);
-        },
-        
-        child: const Text(
-         'Skip to Dashboard',
-         // ... style
-        ),
-       ),
+                onPressed: () {
+                  context.go(AppRoutePaths.citizenHome);
+                },
+                child: Text(
+                  'Skip to Dashboard',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: primaryColor,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -130,426 +162,445 @@ class HomeScreen extends StatelessWidget {
 // --- 2. CITIZEN DASHBOARD (The actual app home with drawer) ---
 
 class CitizenDashboard extends StatelessWidget {
-  final String userName;
-
   const CitizenDashboard({super.key, required this.userName});
 
-  void _showQrCodeModal(BuildContext context) {
-    showDialog(
-      context: context,
-      barrierColor: Colors.black.withOpacity(0.8), 
-      barrierDismissible: true, 
-      builder: (BuildContext context) {
-        return ScaleTransition( 
-          scale: Tween<double>(begin: 0.8, end: 1.0).animate(
-            CurvedAnimation(parent: ModalRoute.of(context)!.animation!, curve: Curves.easeOutCubic),
-          ),
-          child: AlertDialog(
-            backgroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            contentPadding: EdgeInsets.zero,
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    children: [
-                      const Text(
-                        "Your Collection QR Code",
-                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: kTextColor),
-                      ),
-                      const SizedBox(height: 20),
-                      // The QR code image itself (Assuming 'assets/images/qr.png' exists)
-                      Image.asset(
-                        'assets/images/qr.png', 
-                        width: 250, 
-                        height: 250, 
-                        fit: BoxFit.contain,
-                      ),
-                      const SizedBox(height: 10),
-                    ],
-                  ),
-                ),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: const Text(
-                    "Tap outside to close",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 14, color: kPlaceholderColor),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
+  final String userName;
 
-  void _showNotificationModal(BuildContext context) {
-    final List<Map<String, String>> mockNotifications = [
-      {'time': '5 min ago', 'message': 'The collector is 15 minutes away from your location. Please prepare your waste.'},
-      {'time': '2 hours ago', 'message': 'Next collection schedule is tomorrow: Wet Waste.'},
-      {'time': 'Yesterday', 'message': 'Thank you for segregating! Your service rating is 5 stars.'},
-    ];
+  static const Color _darkBackground = Color(0xFF0F3D2E);
+  static const Color _darkSurface = Color(0xFF1A4C38);
+  static const Color _lightBackground = Color(0xFFF6FBF4);
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (BuildContext context) {
-        return Container(
-          padding: const EdgeInsets.all(20),
-          height: MediaQuery.of(context).size.height * 0.5, 
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Notifications',
-                    style: Theme.of(context).textTheme.titleLarge!.copyWith(
-                      fontSize: 24,
-                      color: kTextColor,
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close, color: kTextColor),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-              const Divider(),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: mockNotifications.length,
-                  itemBuilder: (context, index) {
-                    final notif = mockNotifications[index];
-                    return ListTile(
-                      leading: const Icon(Icons.notifications_active, color: kPrimaryColor),
-                      title: Text(notif['message']!, style: const TextStyle(fontWeight: FontWeight.w500)),
-                      subtitle: Text(notif['time']!, style: const TextStyle(color: kPlaceholderColor, fontSize: 12)),
-                      trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: kPlaceholderColor),
-                      onTap: () {
-                        Navigator.pop(context);
-                      },
-                      contentPadding: EdgeInsets.zero,
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildDashboardCard(BuildContext context, {required IconData icon, required String title, required VoidCallback onTap}) {
-    return InkWell(
-      onTap: onTap,
-      child: Card(
-        elevation: 3,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 40, color: kPrimaryColor),
-              const SizedBox(height: 10),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium!.copyWith(fontWeight: FontWeight.w600, color: kTextColor),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-  
-  // Helper function for small stat cards
-  Widget _buildStatCard(String title, String value, Color defaultColor) {
-    Color contentColor = defaultColor;
-    Color boxColor = defaultColor.withOpacity(0.1);
-
-    if (title.contains('Waste')) {
-      double? weight;
-      try {
-        String numericPart = value.split(' ')[0];
-        weight = double.tryParse(numericPart);
-      } catch (e) {
-        weight = null;
-      }
-
-      if (weight != null) {
-        if (weight <= 10.0) {
-          contentColor = Colors.green.shade700; 
-          boxColor = Colors.green.shade100;
-        } else if (weight >= 20.0) {
-          contentColor = Colors.red.shade700; 
-          boxColor = Colors.red.shade100;
-        } else {
-          contentColor = Colors.blue.shade700; 
-          boxColor = Colors.blue.shade100;
-        }
-      }
-    } else {
-      boxColor = Colors.white; 
-      contentColor = kPrimaryColor;
-    }
-
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      color: boxColor, 
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, style: TextStyle(fontSize: 12, color: contentColor, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 4),
-            Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: contentColor)),
-          ],
-        ),
+  void _showComingSoon(BuildContext context, String feature) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$feature is coming soon.'),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('My Waste Manager'),
-        backgroundColor: kPrimaryColor,
-        elevation: 0, 
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_none, color: Colors.white),
-            onPressed: () => _showNotificationModal(context), 
-          ),
-          const SizedBox(width: 8),
-        ],
+    final themeMode = context.watch<ThemeCubit>().state;
+    final isDarkMode = themeMode == ThemeMode.dark;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    final backgroundColor = isDarkMode ? _darkBackground : _lightBackground;
+    final surfaceColor = isDarkMode ? _darkSurface : Colors.white;
+    final outlineColor = isDarkMode
+        ? Colors.white.withValues(alpha: 0.08)
+        : Colors.black.withValues(alpha: 0.05);
+    final textColor = isDarkMode ? Colors.white : Colors.black87;
+    final secondaryTextColor =
+        isDarkMode ? Colors.white70 : Colors.black54;
+    final highlightColor =
+        isDarkMode ? colorScheme.secondary : colorScheme.primary;
+
+    final quickActions = [
+      _QuickAction(
+        label: 'Collection Details',
+        assetPath: 'assets/icons/collection_details.png',
+        onTap: () => context.go(AppRoutePaths.citizenDriverDetails),
       ),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: <Widget>[
-            DrawerHeader(
-              decoration: const BoxDecoration(
-                color: kPrimaryColor,
-              ),
-              child: Column(
+      _QuickAction(
+        label: 'Track Waste',
+        assetPath: 'assets/icons/collection.png',
+        onTap: () => context.go(AppRoutePaths.citizenTrack),
+      ),
+      _QuickAction(
+        label: 'Collection History',
+        assetPath: 'assets/icons/monthly_stats.png',
+        onTap: () => context.go(AppRoutePaths.citizenHistory),
+      ),
+      _QuickAction(
+        label: 'Raise Grievance',
+        assetPath: 'assets/icons/raise_grievance.png',
+        onTap: () => _showComingSoon(context, 'Grievance module'),
+      ),
+      _QuickAction(
+        label: 'Rate Collector',
+        assetPath: 'assets/icons/rate_collector.png',
+        onTap: () => _showComingSoon(context, 'Rating feature'),
+      ),
+      _QuickAction(
+        label: 'Profile',
+        assetPath: 'assets/icons/profile.png',
+        onTap: () => context.go(AppRoutePaths.citizenProfile),
+      ),
+    ];
+
+    return Scaffold(
+      backgroundColor: backgroundColor,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  const Icon(Icons.account_circle, color: Colors.white, size: 40),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Hello, $userName!',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Hello, $userName',
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            color: textColor,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Here is your waste collection summary',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: secondaryTextColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => context.go(AppRoutePaths.citizenProfile),
+                    child: Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: surfaceColor,
+                        border: Border.all(color: outlineColor),
+                      ),
+                      padding: const EdgeInsets.all(10),
+                      child: Image.asset(
+                        'assets/icons/profile.png',
+                        fit: BoxFit.contain,
+                      ),
                     ),
                   ),
                 ],
               ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.qr_code_2, color: kPrimaryColor),
-              title: const Text('My Collection QR Code'),
-              onTap: () {
-                Navigator.pop(context); 
-                _showQrCodeModal(context); 
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.history, color: kPrimaryColor),
-              title: const Text('Collection History & Weighment'),
-              onTap: () {
-                Navigator.pop(context);
-                // GoRouter Navigation
-                context.go(AppRoutePaths.citizenHistory);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.location_on_outlined, color: kPrimaryColor),
-              title: const Text('Track My Waste'),
-              onTap: () {
-                Navigator.pop(context);
-                // GoRouter Navigation
-                context.go(AppRoutePaths.citizenTrack);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.star_rate_outlined, color: kPrimaryColor),
-              title: const Text('Rate Last Collection'),
-              onTap: () {
-                Navigator.pop(context);
-                // TODO: GoRouter Navigation to Rating screen 
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.payments_outlined, color: kPrimaryColor),
-              title: const Text('View Charges & Fines'),
-              onTap: () {
-                Navigator.pop(context);
-                // TODO: GoRouter Navigation to Fines/Charges screen
-              },
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.feedback_outlined, color: Colors.orange),
-              title: const Text('Raise Grievance (Help Desk)'),
-              onTap: () {
-                Navigator.pop(context);
-                // TODO: GoRouter Navigation to Grievance Redressal
-              },
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text('Logout', style: TextStyle(color: Colors.red)),
-              onTap: () {
-                Navigator.pop(context);
-                // **BLOC INTEGRATION: Dispatch Logout Event**
-                context.read<AuthBloc>().add(AuthLogoutRequested());
-                // GoRouter's redirect logic will handle the navigation back to /login
-              },
-            ),
-          ],
-        ),
-      ),
-      // --- DASHBOARD BODY (White Background) ---
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Quick Header
-            Text(
-              'Your Dashboard',
-              style: Theme.of(context).textTheme.titleLarge!.copyWith(
-                fontSize: 28, 
-                fontWeight: FontWeight.w800, 
-                color: kTextColor
+              const SizedBox(height: 24),
+              _SectionCard(
+                surfaceColor: surfaceColor,
+                outlineColor: outlineColor,
+                isDarkMode: isDarkMode,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Collection QR Code',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: textColor,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Show this QR code to the collector during pickup.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: secondaryTextColor,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: isDarkMode
+                            ? surfaceColor.withValues(alpha: 0.6)
+                            : Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: outlineColor),
+                      ),
+                      padding: const EdgeInsets.all(12),
+                      child: AspectRatio(
+                        aspectRatio: 1,
+                        child: Image.asset(
+                          'assets/images/qr.png',
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () => context.go(AppRoutePaths.citizenTrack),
+                            icon: Icon(Icons.location_searching, color: highlightColor),
+                            label: Text(
+                              'Track Waste',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: highlightColor,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              side: BorderSide(color: highlightColor),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: FilledButton(
+                            onPressed: () => context.go(AppRoutePaths.citizenDriverDetails),
+                            style: FilledButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              backgroundColor: highlightColor,
+                            ),
+                            child: Text(
+                              'Next Pickup',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 20),
-
-            // 1. Next Collection Card (NOW TAPABLE)
-            Card(
-              elevation: 4,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              child: InkWell( 
-                onTap: () {
-                  // GoRouter Navigation to Driver Details
-                  context.go(AppRoutePaths.citizenDriverDetails);
-                },
-                child: ListTile(
-                  leading: const Icon(Icons.schedule, size: 40, color: kPrimaryColor),
-                  title: Text('Next Collection: Wet Waste', style: Theme.of(context).textTheme.bodyMedium!.copyWith(fontWeight: FontWeight.bold)),
-                  subtitle: const Text('Tomorrow, 7:00 AM - 8:00 AM', style: TextStyle(color: kPlaceholderColor)),
-                  trailing: Chip(
-                    label: const Text('Segregate!', style: TextStyle(color: Colors.white)),
-                    backgroundColor: kPrimaryColor,
+              const SizedBox(height: 28),
+              Text(
+                'Quick Actions',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: textColor,
+                ),
+              ),
+              const SizedBox(height: 16),
+              _QuickActionGrid(
+                actions: quickActions,
+                isDarkMode: isDarkMode,
+                surfaceColor: surfaceColor,
+                textColor: textColor,
+                outlineColor: outlineColor,
+              ),
+              const SizedBox(height: 28),
+              Text(
+                'Monthly Stats',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: textColor,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildStatCard(
+                      context,
+                      title: 'Dry Waste',
+                      value: '12.5 kg',
+                      accent: Colors.blue,
+                      isDarkMode: isDarkMode,
+                    ),
                   ),
-                  contentPadding: const EdgeInsets.all(16),
-                ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildStatCard(
+                      context,
+                      title: 'Wet Waste',
+                      value: '25.0 kg',
+                      accent: Colors.green,
+                      isDarkMode: isDarkMode,
+                    ),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 20),
-
-            // 2. Quick Actions Grid
-            const Text(
-              'Quick Actions',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: kTextColor),
-            ),
-            const SizedBox(height: 10),
-
-            GridView.count(
-              crossAxisCount: 2,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-              children: <Widget>[
-                // Card 1: QR Code Access
-                _buildDashboardCard(
-                  context,
-                  icon: Icons.qr_code_2,
-                  title: 'My QR Code',
-                  onTap: () {
-                    _showQrCodeModal(context); 
-                  },
-                ),
-                // Card 2: Collection History
-                _buildDashboardCard(
-                  context,
-                  icon: Icons.history,
-                  title: 'Collection History',
-                  onTap: () {
-                    // GoRouter Navigation
-                    context.go(AppRoutePaths.citizenHistory);
-                  },
-                ),
-                // Card 3: Raise Grievance
-                _buildDashboardCard(
-                  context,
-                  icon: Icons.feedback_outlined,
-                  title: 'Raise Grievance',
-                  onTap: () {
-                    // TODO: GoRouter Navigation to Grievance Redressal
-                  },
-                ),
-                // Card 4: Rate Service
-                _buildDashboardCard(
-                  context,
-                  icon: Icons.star_rate_outlined,
-                  title: 'Rate Collector',
-                  onTap: () {
-                    // TODO: GoRouter Navigation to Rating screen
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 30),
-
-            // 3. Stats Summary (Header)
-            const Text(
-              'Monthly Stats',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: kTextColor),
-            ),
-            const SizedBox(height: 10),
-
-            Row(
-              children: [
-                Expanded(child: _buildStatCard('Dry Waste', '12.5 kg', Colors.blue)), 
-                const SizedBox(width: 10),
-                Expanded(child: _buildStatCard('Wet Waste', '25.0 kg', Colors.green)), 
-              ],
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(child: _buildStatCard('Total Collections', '8 / month', Colors.deepOrange)), 
-                const SizedBox(width: 10),
-                Expanded(child: _buildStatCard('Compliance Rating', '4.8 Stars', Colors.purple)), 
-              ],
-            ),
-            const SizedBox(height: 20),
-          ],
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildStatCard(
+                      context,
+                      title: 'Collections',
+                      value: '8 / month',
+                      accent: Colors.deepOrange,
+                      isDarkMode: isDarkMode,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildStatCard(
+                      context,
+                      title: 'Compliance',
+                      value: '4.8 ?',
+                      accent: Colors.purple,
+                      isDarkMode: isDarkMode,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
+
+  Widget _buildStatCard(
+    BuildContext context, {
+    required String title,
+    required String value,
+    required Color accent,
+    required bool isDarkMode,
+  }) {
+    final theme = Theme.of(context);
+    final Color backgroundTint =
+        isDarkMode ? accent.withValues(alpha: 0.28) : accent.withValues(alpha: 0.14);
+    final Color labelColor = isDarkMode ? Colors.white70 : Colors.black87;
+    final Color valueColor = isDarkMode ? Colors.white : accent;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: backgroundTint,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: labelColor,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: theme.textTheme.titleLarge?.copyWith(
+              color: valueColor,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QuickActionGrid extends StatelessWidget {
+  const _QuickActionGrid({
+    required this.actions,
+    required this.isDarkMode,
+    required this.surfaceColor,
+    required this.textColor,
+    required this.outlineColor,
+  });
+
+  final List<_QuickAction> actions;
+  final bool isDarkMode;
+  final Color surfaceColor;
+  final Color textColor;
+  final Color outlineColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: actions.length,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        mainAxisSpacing: 16,
+        crossAxisSpacing: 12,
+        childAspectRatio: 0.85,
+      ),
+      itemBuilder: (context, index) {
+        final action = actions[index];
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: action.onTap,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                    Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isDarkMode
+                        ? surfaceColor.withValues(alpha: 0.6)
+                        : surfaceColor,
+                    border: Border.all(color: outlineColor),
+                  ),
+                  padding: const EdgeInsets.all(12),
+                  child: Image.asset(
+                    action.assetPath,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  action.label,
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: textColor,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _SectionCard extends StatelessWidget {
+  const _SectionCard({
+    required this.child,
+    required this.surfaceColor,
+    required this.outlineColor,
+    required this.isDarkMode,
+  });
+
+  final Widget child;
+  final Color surfaceColor;
+  final Color outlineColor;
+  final bool isDarkMode;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: outlineColor),
+        boxShadow: isDarkMode
+            ? []
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 16,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+      ),
+      padding: const EdgeInsets.all(20),
+      child: child,
+    );
+  }
+}
+
+class _QuickAction {
+  const _QuickAction({
+    required this.label,
+    required this.assetPath,
+    required this.onTap,
+  });
+
+  final String label;
+  final String assetPath;
+  final VoidCallback onTap;
 }
