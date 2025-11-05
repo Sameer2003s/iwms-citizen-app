@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 // Note: Relative imports now work since you moved this file into presentation/citizen/
-import '../../../core/constants.dart'; 
+import '../../../router/app_router.dart';
 import 'package:go_router/go_router.dart'; // Import GoRouter
 
 // --- Reusable custom slide-up transition is now deprecated, use GoRouter navigation ---
@@ -25,10 +25,33 @@ class DriverDetailsScreen extends StatelessWidget {
     // Safely use fallback values
     final currentDriverName = driverName ?? 'Rajesh Kumar (N/A)';
     final currentVehicleNumber = vehicleNumber ?? 'TN 01 AB 1234 (N/A)';
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final primaryColor = colorScheme.primary;
+    final textColor = colorScheme.onSurface;
+    final placeholderColor = colorScheme.onSurfaceVariant;
     
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Collection Details'),
+        automaticallyImplyLeading: false,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go(AppRoutePaths.citizenHome);
+            }
+          },
+        ),
+        title: Text(
+          'Collection Details',
+          style: theme.textTheme.titleLarge?.copyWith(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        backgroundColor: primaryColor,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
@@ -38,7 +61,10 @@ class DriverDetailsScreen extends StatelessWidget {
             // Header
             Text(
               'Your Next Collection',
-              style: Theme.of(context).textTheme.titleLarge!.copyWith(fontSize: 24),
+              style: theme.textTheme.titleLarge!.copyWith(
+                fontSize: 24,
+                color: textColor,
+              ),
             ),
             const SizedBox(height: 16),
 
@@ -47,21 +73,32 @@ class DriverDetailsScreen extends StatelessWidget {
               elevation: 4,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               child: ListTile(
-                leading: const Icon(Icons.schedule, color: kPrimaryColor, size: 30),
+                leading: Icon(Icons.schedule, color: primaryColor, size: 30),
                 title: Text(
                   'Type: $collectionType',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                    color: textColor,
+                  ),
                 ),
-                subtitle: Text('Time: $collectionTime'),
+                subtitle: Text(
+                  'Time: $collectionTime',
+                  style: theme.textTheme.bodySmall?.copyWith(color: placeholderColor),
+                ),
                 contentPadding: const EdgeInsets.all(16),
               ),
             ),
             const SizedBox(height: 30),
 
             // Driver Information Section
-            const Text(
+            Text(
               'Assigned Crew Details',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: kTextColor),
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: textColor,
+              ),
             ),
             const SizedBox(height: 15),
 
@@ -74,10 +111,10 @@ class DriverDetailsScreen extends StatelessWidget {
                 child: Row(
                   children: [
                     // Driver Photo Placeholder
-                    const CircleAvatar(
+                    CircleAvatar(
                       radius: 30,
-                      backgroundColor: kPrimaryColor,
-                      child: Icon(Icons.person, size: 30, color: Colors.white),
+                      backgroundColor: primaryColor,
+                      child: const Icon(Icons.person, size: 30, color: Colors.white),
                     ),
                     const SizedBox(width: 20),
                     // Driver Name & Vehicle
@@ -86,16 +123,26 @@ class DriverDetailsScreen extends StatelessWidget {
                       children: [
                         Text(
                           currentDriverName,
-                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w600,
+                            color: textColor,
+                          ),
                         ),
                         Text(
                           'Driver',
-                          style: TextStyle(color: kPlaceholderColor, fontSize: 14),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: placeholderColor,
+                            fontSize: 14,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         Text(
                           'Vehicle No: $currentVehicleNumber',
-                          style: const TextStyle(fontWeight: FontWeight.w500),
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w500,
+                            color: textColor,
+                          ),
                         ),
                       ],
                     ),
@@ -126,7 +173,7 @@ class DriverDetailsScreen extends StatelessWidget {
                   style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: kPrimaryColor,
+                  backgroundColor: primaryColor,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   elevation: 6,
                 ),

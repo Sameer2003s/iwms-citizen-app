@@ -3,9 +3,8 @@ import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:iwms_citizen_app/data/repositories/auth_repository.dart';
 import 'package:iwms_citizen_app/logic/auth/auth_bloc.dart';
-import 'package:iwms_citizen_app/modules/module2_driver/services/image_compress_service.dart';
-import 'package:iwms_citizen_app/data/repositories/driver_repository.dart';
-import 'package:iwms_citizen_app/logic/driver/driver_bloc.dart';
+import 'package:iwms_citizen_app/shared/services/collection_history_service.dart';
+import 'package:iwms_citizen_app/shared/services/notification_service.dart';
 
 // --- Vehicle Tracking Imports ---
 import 'package:iwms_citizen_app/data/repositories/vehicle_repository.dart';
@@ -24,21 +23,17 @@ Future<void> setupDI() async {
   getIt.registerSingleton<SharedPreferences>(prefs);
 
   // --- Services ---
-  getIt.registerLazySingleton(() => ImageCompressService());
+  getIt.registerLazySingleton(
+    () => CollectionHistoryService(getIt<SharedPreferences>()),
+  );
+  getIt.registerLazySingleton(() => NotificationService());
+  await getIt<CollectionHistoryService>().initialize();
 
   // --- Repositories ---
   getIt.registerLazySingleton(() => AuthRepository(
         // This one uses POSITIONAL arguments
         getIt<Dio>(),
         getIt<SharedPreferences>(),
-      ));
-
-  getIt.registerLazySingleton(() => DriverRepository(
-        // --- THIS IS THE FIX ---
-        // This one uses NAMED arguments
-        dio: getIt<Dio>(),
-        compressService: getIt<ImageCompressService>(),
-        // --- END FIX ---
       ));
 
   // --- Register your VehicleRepository ---
@@ -49,10 +44,6 @@ Future<void> setupDI() async {
   // --- BLoCs ---
   getIt.registerFactory(() => AuthBloc(
         authRepository: getIt<AuthRepository>(),
-      ));
-
-  getIt.registerFactory(() => DriverBloc(
-        driverRepository: getIt<DriverRepository>(),
       ));
 
   // --- Register your VehicleBloc ---

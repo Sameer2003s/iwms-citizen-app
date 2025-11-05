@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -9,7 +8,6 @@ import 'package:iwms_citizen_app/logic/vehicle_tracking/vehicle_bloc.dart';
 import 'package:iwms_citizen_app/logic/vehicle_tracking/vehicle_event.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../core/constants.dart';
-import '../../../core/theme/app_colors.dart';
 
 class MapScreen extends StatefulWidget {
   final String? driverName;

@@ -1,92 +1,137 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-// Layered imports
-import '../../../core/constants.dart';
 import '../../../logic/auth/auth_bloc.dart';
 import '../../../logic/auth/auth_event.dart';
+import '../../../logic/auth/auth_state.dart';
 
 // Dropdown items for property type
 enum PropertyType { house, apartment, office, commercial, other }
 
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+  final String? phone;
+
+  const RegisterScreen({super.key, this.phone});
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
+  final _formKey = GlobalKey<FormState>();
+
   final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _addressController = TextEditingController();
+  final TextEditingController _contactController = TextEditingController();
+  final TextEditingController _buildingController = TextEditingController();
+  final TextEditingController _streetController = TextEditingController();
+  final TextEditingController _areaController = TextEditingController();
+  final TextEditingController _pincodeController = TextEditingController();
+  final TextEditingController _cityController = TextEditingController();
+  final TextEditingController _districtController = TextEditingController();
+  final TextEditingController _stateController = TextEditingController();
+  final TextEditingController _zoneController = TextEditingController();
+  final TextEditingController _wardController = TextEditingController();
+
   PropertyType? _selectedPropertyType;
 
-  void _handleRegistration(BuildContext context) {
-    final userName = _nameController.text.trim(); 
-
-    if (userName.isNotEmpty && _addressController.text.isNotEmpty) {
-      
-      // Simulate successful registration and automatically log the user in.
-      context.read<AuthBloc>().add(
-        AuthLoginRequested(
-          mobileNumber: '9999999999', // Mock mobile number for this registration
-          otp: '1234', // Mock OTP
-        ),
-      );
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Registration successful! Redirecting to dashboard...'),
-          backgroundColor: kPrimaryColor,
-        ),
-      );
-      
-    } else {
-      // Simple error message for demo
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please fill in Name and Address to complete registration.'),
-          backgroundColor: Colors.red,
-        ),
-      );
+  @override
+  void initState() {
+    super.initState();
+    if (widget.phone != null) {
+      _contactController.text = widget.phone!;
     }
   }
 
   @override
   void dispose() {
     _nameController.dispose();
-    _emailController.dispose();
-    _addressController.dispose();
+    _contactController.dispose();
+    _buildingController.dispose();
+    _streetController.dispose();
+    _areaController.dispose();
+    _pincodeController.dispose();
+    _cityController.dispose();
+    _districtController.dispose();
+    _stateController.dispose();
+    _zoneController.dispose();
+    _wardController.dispose();
     super.dispose();
   }
 
-  // Helper for consistent label display
-  Widget _buildLabel(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
-      child: Text(
-        text,
-        style: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w500,
-          color: kTextColor,
-        ),
-      ),
+  void _submit(BuildContext context) {
+    final phone = _contactController.text.trim();
+
+    if (phone.isEmpty) {
+      _showSnack('Enter your phone number.', Colors.red);
+      return;
+    }
+
+    if (_selectedPropertyType == null) {
+      _showSnack('Select your property type.', Colors.red);
+      return;
+    }
+
+    if (_formKey.currentState?.validate() != true) {
+      return;
+    }
+
+    context.read<AuthBloc>().add(AuthCitizenRegisterRequested(
+          phone: phone,
+          ownerName: _nameController.text.trim(),
+          contactNo: _contactController.text.trim(),
+          buildingNo: _buildingController.text.trim(),
+          street: _streetController.text.trim(),
+          area: _areaController.text.trim(),
+          pincode: _pincodeController.text.trim(),
+          city: _cityController.text.trim(),
+          district: _districtController.text.trim(),
+          state: _stateController.text.trim(),
+          zone: _zoneController.text.trim(),
+          ward: _wardController.text.trim(),
+          propertyName: _selectedPropertyType!.name.toUpperCase(),
+        ));
+  }
+
+  void _showSnack(String message, Color color) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: color),
     );
   }
 
-  // Helper for text fields (uses built-in theme for styling)
-  Widget _buildInputField(String label, TextEditingController controller, {String hint = ""}) {
+  Widget _buildTextField(
+    BuildContext context, {
+    required String label,
+    required TextEditingController controller,
+    TextInputType keyboardType = TextInputType.text,
+    bool readOnly = false,
+  }) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final textColor = colorScheme.onSurface;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildLabel(label),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8.0),
+          child: Text(
+            label,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              color: textColor,
+            ),
+          ),
+        ),
         TextFormField(
           controller: controller,
-          keyboardType: TextInputType.text,
-          style: const TextStyle(color: kTextColor),
-          decoration: InputDecoration(hintText: hint),
+          readOnly: readOnly,
+          keyboardType: keyboardType,
+          style: theme.textTheme.bodyMedium?.copyWith(color: textColor),
+          validator: (value) => (value == null || value.trim().isEmpty)
+              ? 'Required field'
+              : null,
         ),
         const SizedBox(height: 20),
       ],
@@ -95,123 +140,178 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final primaryColor = colorScheme.primary;
+    final textColor = colorScheme.onSurface;
+    final placeholderColor = colorScheme.onSurfaceVariant;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('New User Registration'),
-        backgroundColor: kPrimaryColor,
+        title: Text(
+          'Citizen Registration',
+          style: theme.textTheme.titleLarge?.copyWith(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        backgroundColor: primaryColor,
         elevation: 0,
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "Tell us about your home.",
-                style: Theme.of(context).textTheme.titleLarge!.copyWith(
-                  color: kTextColor,
-                  fontSize: 30,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                "Your address is used to link your household to a unique QR code.",
-                style: TextStyle(color: kPlaceholderColor, fontSize: 16),
-              ),
-              const SizedBox(height: 32),
+        child: BlocConsumer<AuthBloc, AuthState>(
+          listener: (context, state) {
+            if (state is AuthStateFailure) {
+              _showSnack(state.message, Colors.red);
+            } else if (state is AuthStateAuthenticatedCitizen) {
+              _showSnack('Registration complete!', primaryColor);
+            }
+          },
+          builder: (context, state) {
+            final bool isLoading = state is AuthStateLoading;
 
-              _buildInputField("Full Name", _nameController, hint: "John Doe"),
-              
-              _buildInputField("Email (Optional)", _emailController, hint: "e.g., example@email.com"),
-              
-              const SizedBox(height: 10),
-
-              _buildLabel("Property Type"),
-              Container(
-                decoration: BoxDecoration(
-                  color: kContainerColor,
-                  borderRadius: BorderRadius.circular(8.0),
-                  border: Border.all(color: kBorderColor, width: 1),
-                ),
-                child: DropdownButtonFormField<PropertyType>(
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    hintText: "Select your property type",
-                    border: InputBorder.none, 
-                    contentPadding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
-                  ),
-                  value: _selectedPropertyType,
-                  items: PropertyType.values.map((PropertyType type) {
-                    return DropdownMenuItem<PropertyType>(
-                      value: type,
-                      child: Text(type.toString().split('.').last.toUpperCase(), style: const TextStyle(color: kTextColor)),
-                    );
-                  }).toList(),
-                  onChanged: (PropertyType? newValue) {
-                    setState(() {
-                      _selectedPropertyType = newValue;
-                    });
-                  },
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              _buildInputField("Property Address", _addressController, hint: "House/Apartment Number & Street"),
-              
-              TextFormField(
-                decoration: const InputDecoration(hintText: "City/Town/Pin Code"),
-                keyboardType: TextInputType.text,
-                style: const TextStyle(color: kTextColor),
-              ),
-              const SizedBox(height: 30),
-
-              const Text(
-                "Location Verification (GPS Tagging)",
-                style: TextStyle(color: kTextColor, fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    // TODO: Implement GPS map picker here
-                  },
-                  icon: const Icon(Icons.location_on_outlined, color: kPrimaryColor),
-                  label: const Text('Pin Your Exact Location (Required)'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: kPrimaryColor,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    side: const BorderSide(color: kPrimaryColor, width: 1),
-                    textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 40),
-
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton(
-                  onPressed: () => _handleRegistration(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: kPrimaryColor,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8.0),
+            return Stack(
+              children: [
+                SingleChildScrollView(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Complete your home profile',
+                          style: theme.textTheme.titleLarge!.copyWith(
+                            color: textColor,
+                            fontSize: 28,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'The details help us create your unique collection QR and service schedule.',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: placeholderColor,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        _buildTextField(
+                          context,
+                          label: 'Owner Name',
+                          controller: _nameController,
+                        ),
+                        _buildTextField(
+                          context,
+                          label: 'Contact Number',
+                          controller: _contactController,
+                          keyboardType: TextInputType.phone,
+                          readOnly: widget.phone != null,
+                        ),
+                        _buildTextField(
+                          context,
+                          label: 'Building / Door Number',
+                          controller: _buildingController,
+                        ),
+                        _buildTextField(
+                          context,
+                          label: 'Street',
+                          controller: _streetController,
+                        ),
+                        _buildTextField(
+                          context,
+                          label: 'Area / Locality',
+                          controller: _areaController,
+                        ),
+                        _buildTextField(
+                          context,
+                          label: 'Pincode',
+                          controller: _pincodeController,
+                          keyboardType: TextInputType.number,
+                        ),
+                        _buildTextField(
+                          context,
+                          label: 'City',
+                          controller: _cityController,
+                        ),
+                        _buildTextField(
+                          context,
+                          label: 'District',
+                          controller: _districtController,
+                        ),
+                        _buildTextField(
+                          context,
+                          label: 'State',
+                          controller: _stateController,
+                        ),
+                        _buildTextField(
+                          context,
+                          label: 'Zone',
+                          controller: _zoneController,
+                        ),
+                        _buildTextField(
+                          context,
+                          label: 'Ward',
+                          controller: _wardController,
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8.0),
+                          child: Text(
+                            'Property Type',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              color: textColor,
+                            ),
+                          ),
+                        ),
+                        DropdownButtonFormField<PropertyType>(
+                          initialValue: _selectedPropertyType,
+                          decoration: const InputDecoration(),
+                          items: PropertyType.values
+                              .map(
+                                (type) => DropdownMenuItem<PropertyType>(
+                                  value: type,
+                                  child: Text(type.name.toUpperCase()),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (value) {
+                            setState(() {
+                              _selectedPropertyType = value;
+                            });
+                          },
+                          validator: (value) => value == null ? 'Select one' : null,
+                        ),
+                        const SizedBox(height: 32),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 56,
+                          child: ElevatedButton(
+                            onPressed: isLoading ? null : () => _submit(context),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: primaryColor,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8.0),
+                              ),
+                            ),
+                            child: Text(
+                              'Complete Registration',
+                              style: theme.textTheme.labelLarge?.copyWith(color: Colors.white),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  child: Text(
-                    "Complete Registration (Generate QR)",
-                    style: Theme.of(context).textTheme.labelLarge!.copyWith(
-                      color: Colors.white,
-                      fontSize: 16,
-                    ),
-                  ),
                 ),
-              ),
-            ],
-          ),
+                if (isLoading)
+                  const Center(
+                    child: CircularProgressIndicator(),
+                  ),
+              ],
+            );
+          },
         ),
       ),
     );

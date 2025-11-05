@@ -1,3 +1,5 @@
+import java.io.File
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -7,31 +9,44 @@ plugins {
 
 android {
     namespace = "com.example.iwms_citizen_app" // Using your new namespace
-    compileSdk = 34 // Use a modern compile SDK
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
-        // --- FIX: Set to Java 1.8 for compatibility ---
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     kotlinOptions {
-        jvmTarget = "1.8" // --- FIX ---
+        jvmTarget = "17"
     }
 
     defaultConfig {
         applicationId = "com.example.iwms_citizen_app"
-        minSdk = flutter.minSdkVersion // <-- CRITICAL FIX for older packages
-        targetSdk = 34 
+        minSdk = flutter.minSdkVersion
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         multiDexEnabled = true // <-- CRITICAL FIX
     }
 
+    signingConfigs {
+        getByName("debug") {
+            val debugKeystore =
+                File(System.getProperty("user.home"), ".android/debug.keystore")
+            storeFile = debugKeystore
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+        create("release") {
+            initWith(getByName("debug"))
+        }
+    }
+
     buildTypes {
         release {
-            // Configure your signing configs here
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 }
@@ -43,4 +58,3 @@ flutter {
 dependencies {
      implementation("androidx.multidex:multidex:2.0.1") // <-- CRITICAL FIX
 }
-

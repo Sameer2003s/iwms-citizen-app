@@ -1,5 +1,4 @@
 // This is a basic Flutter widget test.
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:iwms_citizen_app/core/di.dart';
 import 'package:iwms_citizen_app/logic/auth/auth_bloc.dart';
@@ -30,7 +29,7 @@ void main() {
     );
 
     // Build our app and trigger a frame.
-    await tester.pumpWidget(MyApp(appRouter: appRouter.router));
+    await tester.pumpWidget(MyApp(appRouter: appRouter.router, authBloc: authBloc));
 
     // Verify that the splash screen is shown
     expect(find.byType(SplashScreen), findsOneWidget);

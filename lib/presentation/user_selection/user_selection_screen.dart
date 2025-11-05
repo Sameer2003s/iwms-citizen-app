@@ -8,38 +8,70 @@ class UserSelectionScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final textTheme = theme.textTheme;
+    final primaryColor = theme.colorScheme.primary;
+
     return Scaffold(
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(110),
+        child: Container(
+          color: const Color(0xFF21381B),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          child: const SafeArea(
+            bottom: false,
+            child: SizedBox.expand(),
+          ),
+        ),
+      ),
       body: Container(
         width: double.infinity,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Theme.of(context).primaryColor, const Color.fromARGB(255, 0, 0, 0)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/images/bgd.jpg'),
+            fit: BoxFit.cover,
           ),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Image.asset(
-              'assets/images/logo.png', // Your main app logo
-              width: 120,
-              height: 120,
+            Container(
+              width: 140,
+              height: 140,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 18,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              alignment: Alignment.center,
+              child: Padding(
+                padding: const EdgeInsets.all(25.0),
+                child: Image.asset(
+                  'assets/images/logo.png',
+                  fit: BoxFit.contain,
+                ),
+              ),
             ),
             const SizedBox(height: 24),
             Text(
               "Welcome to IWMS",
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: textTheme.headlineMedium?.copyWith(
+                color: const Color.fromARGB(255, 255, 255, 255),
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
               "Who are you?",
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: Colors.white.withOpacity(0.9),
-                  ),
+              style: textTheme.titleLarge?.copyWith(
+                color: const Color.fromARGB(255, 255, 255, 255),
+              ),
             ),
             const SizedBox(height: 48),
 
@@ -51,14 +83,7 @@ class UserSelectionScreen extends StatelessWidget {
                 // Navigate to Citizen Login
                 context.push(AppRoutePaths.citizenLogin);
               },
-            ),
-            _UserRoleCard(
-              icon: Icons.local_shipping,
-              title: "Driver",
-              onTap: () {
-                // Navigate to Driver Login
-                context.push(AppRoutePaths.driverLogin);
-              },
+              iconColor: primaryColor,
             ),
             _UserRoleCard(
               icon: Icons.build,
@@ -67,6 +92,7 @@ class UserSelectionScreen extends StatelessWidget {
                 // Placeholder
                 _showComingSoon(context);
               },
+              iconColor: primaryColor,
             ),
             _UserRoleCard(
               icon: Icons.admin_panel_settings,
@@ -75,14 +101,16 @@ class UserSelectionScreen extends StatelessWidget {
                 // Placeholder
                 _showComingSoon(context);
               },
+              iconColor: primaryColor,
             ),
-             _UserRoleCard(
+            _UserRoleCard(
               icon: Icons.security,
               title: "Super Admin",
               onTap: () {
                 // Placeholder
-                 _showComingSoon(context);
+                _showComingSoon(context);
               },
+              iconColor: primaryColor,
             ),
           ],
         ),
@@ -104,11 +132,13 @@ class _UserRoleCard extends StatelessWidget {
   final IconData icon;
   final String title;
   final VoidCallback onTap;
+  final Color iconColor;
 
   const _UserRoleCard({
     required this.icon,
     required this.title,
     required this.onTap,
+    required this.iconColor,
   });
 
   @override
@@ -124,7 +154,7 @@ class _UserRoleCard extends StatelessWidget {
           padding: const EdgeInsets.all(20.0),
           child: Row(
             children: [
-              Icon(icon, color: Theme.of(context).primaryColor, size: 28),
+              Icon(icon, color: iconColor, size: 28),
               const SizedBox(width: 24),
               Text(
                 title,

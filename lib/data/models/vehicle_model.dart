@@ -27,7 +27,7 @@ class VehicleModel extends Equatable {
   // Factory constructor to safely parse JSON from the API
   factory VehicleModel.fromJson(Map<String, dynamic> json) {
     // Helper function for safe double parsing, defaulting to 0.0 if data is null or invalid
-    double _safeParseDouble(dynamic value) {
+    double safeParseDouble(dynamic value) {
       if (value == null) return 0.0;
       if (value is String) return double.tryParse(value) ?? 0.0;
       if (value is num) return value.toDouble();
@@ -35,7 +35,7 @@ class VehicleModel extends Equatable {
     }
     
     // Helper function for safe int parsing, defaulting to 0 if data is null or invalid
-    int _safeParseInt(dynamic value) {
+    int safeParseInt(dynamic value) {
       if (value == null) return 0;
       if (value is String) return int.tryParse(value) ?? 0;
       if (value is num) return value.toInt();
@@ -57,8 +57,8 @@ class VehicleModel extends Equatable {
         : rawDriverName;
 
     // --- Map coordinates (Prioritize the inner, numeric 'lat' and 'lng') ---
-    final lat = _safeParseDouble(json['lat'] ?? json['LAT'] ?? json['latitude']);
-    final lon = _safeParseDouble(json['lng'] ?? json['LON'] ?? json['longitude']);
+    final lat = safeParseDouble(json['lat'] ?? json['LAT'] ?? json['latitude']);
+    final lon = safeParseDouble(json['lng'] ?? json['LON'] ?? json['longitude']);
 
     // --- Load/capacity data (Using loadTruck as a best guess, mapping "nill" to 0) ---
     final loadData = json['loadTruck']?.toString() != 'nill'
@@ -71,12 +71,12 @@ class VehicleModel extends Equatable {
 
     // --- Model Assembly ---
     // Determine unique ID (Use deviceId as a robust fallback ID)
-    final vehicleId = regNo ?? json['deviceId']?.toString() ?? '${lat}_${lon}';
+    final vehicleId = regNo ?? json['deviceId']?.toString() ?? '${lat}_$lon';
 
     // 🟢 START OF THE REAL FIX: New Status Determination Logic
     // This logic correctly interprets the API data based on your provided JSON.
     final ignition = json['ignitionStatus']?.toString().toLowerCase();
-    final speed = _safeParseInt(json['speed']);
+    final speed = safeParseInt(json['speed']);
     
     // Use the "status" field (e.g., "OFF") as a fallback if ignitionStatus is missing
     final fallbackStatus = json['status']?.toString().toLowerCase();
@@ -126,7 +126,7 @@ class VehicleModel extends Equatable {
       status: determinedStatus, // <-- Use the new, correct status
 
       // Pass load data through safe parser
-      wasteCapacityKg: _safeParseDouble(loadData),
+      wasteCapacityKg: safeParseDouble(loadData),
       lastUpdated: updateTime,
     );
   }

@@ -1,5 +1,3 @@
-// Original Content provided by you:
-
 allprojects {
     repositories {
         google()
@@ -7,15 +5,12 @@ allprojects {
     }
 }
 
-val newBuildDir: Directory = rootProject.layout.buildDirectory.dir("../../build").get()
-rootProject.layout.buildDirectory.value(newBuildDir)
+val sharedBuildDir: Directory = rootProject.layout.projectDirectory.dir("../build")
+rootProject.layout.buildDirectory.set(sharedBuildDir)
 
 subprojects {
-    val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
-    project.layout.buildDirectory.value(newSubprojectBuildDir)
-}
-subprojects {
-    project.evaluationDependsOn(":app")
+    layout.buildDirectory.set(sharedBuildDir.dir(project.name))
+    evaluationDependsOn(":app")
 }
 
 tasks.register<Delete>("clean") {

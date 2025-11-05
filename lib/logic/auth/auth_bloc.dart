@@ -1,9 +1,13 @@
 // lib/logic/auth/auth_bloc.dart
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:iwms_citizen_app/data/models/user_model.dart';
 import '../../data/repositories/auth_repository.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
+
+const String _demoCitizenPhone = '9786255854';
+const String _demoCitizenName = 'Citizen Demo';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final AuthRepository _authRepository;
@@ -14,9 +18,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         initialization = authRepository.initialize(),
         super(const AuthStateInitial()) {
     on<AuthStatusChecked>(_onStatusChecked);
-    on<AuthLoginRequested>(_onLoginRequested);
+    on<AuthCitizenLoginRequested>(_onCitizenLoginRequested);
+    on<AuthCitizenRegisterRequested>(_onCitizenRegisterRequested);
     on<AuthLogoutRequested>(_onLogoutRequested);
-    on<AuthDriverLoginRequested>(_onDriverLoginRequested);
 
     initialization.then((_) {
       add(AuthStatusChecked());
@@ -35,9 +39,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         case 'citizen':
           emit(AuthStateAuthenticatedCitizen(userName: user.userName));
           break;
-        case 'driver':
-          emit(AuthStateAuthenticatedDriver(userName: user.userName));
-          break;
         default:
           await _authRepository.logout();
           emit(const AuthStateUnauthenticated());
@@ -48,40 +49,37 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     }
   }
 
-  Future<void> _onLoginRequested(
-    AuthLoginRequested event,
+  Future<void> _onCitizenLoginRequested(
+    AuthCitizenLoginRequested event,
     Emitter<AuthState> emit,
   ) async {
-    // --- FIX: Use AuthStateLoading ---
     emit(const AuthStateLoading());
-    try {
-      // CITIZEN login (mock)
-      final user = await _authRepository.login(
-        mobileNumber: event.mobileNumber,
-        otp: event.otp,
-      );
-      emit(AuthStateAuthenticatedCitizen(userName: user.userName));
-    } catch (e) {
-      emit(AuthStateFailure(message: e.toString()));
-    }
+    final trimmedPhone = event.phone.trim();
+    final user = UserModel(
+      userId: 'CUS-$trimmedPhone',
+      userName: _demoCitizenName,
+      role: 'citizen',
+      authToken: 'demo-token-citizen',
+    );
+    await _authRepository.saveUser(user);
+    emit(AuthStateAuthenticatedCitizen(userName: user.userName));
   }
 
-  Future<void> _onDriverLoginRequested(
-    AuthDriverLoginRequested event,
+  Future<void> _onCitizenRegisterRequested(
+    AuthCitizenRegisterRequested event,
     Emitter<AuthState> emit,
   ) async {
-    // --- FIX: Use AuthStateLoading ---
     emit(const AuthStateLoading());
-    try {
-      // DRIVER login
-      final user = await _authRepository.loginDriver(
-        userName: event.userName,
-        password: event.password,
-      );
-      emit(AuthStateAuthenticatedDriver(userName: user.userName));
-    } catch (e) {
-      emit(AuthStateFailure(message: e.toString()));
-    }
+    final userName =
+        event.ownerName.isNotEmpty ? event.ownerName : _demoCitizenName;
+    final user = UserModel(
+      userId: 'CUS-REG-${event.phone.trim()}',
+      userName: userName,
+      role: 'citizen',
+      authToken: 'demo-token-citizen',
+    );
+    await _authRepository.saveUser(user);
+    emit(AuthStateAuthenticatedCitizen(userName: user.userName));
   }
 
   Future<void> _onLogoutRequested(
@@ -90,5 +88,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     await _authRepository.logout();
     emit(const AuthStateUnauthenticated());
+  }
+
+  String _errorMessage(Object error) {
+    final message = error.toString();
+    return message.startsWith('Exception: ')
+        ? message.replaceFirst('Exception: ', '')
+        : message;
   }
 }

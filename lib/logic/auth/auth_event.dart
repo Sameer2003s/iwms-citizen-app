@@ -5,36 +5,67 @@ abstract class AuthEvent extends Equatable {
   const AuthEvent();
 
   @override
-  List<Object> get props => [];
+  List<Object?> get props => [];
 }
 
-// Event for CITIZEN login
-class AuthLoginRequested extends AuthEvent {
-  final String mobileNumber;
-  final String otp;
+class AuthCitizenLoginRequested extends AuthEvent {
+  final String phone;
 
-  const AuthLoginRequested({required this.mobileNumber, required this.otp});
+  const AuthCitizenLoginRequested({required this.phone});
 
   @override
-  List<Object> get props => [mobileNumber, otp];
+  List<Object?> get props => [phone];
 }
 
-// Event for DRIVER login
-class AuthDriverLoginRequested extends AuthEvent {
-  final String userName;
-  final String password;
+class AuthCitizenRegisterRequested extends AuthEvent {
+  final String phone;
+  final String ownerName;
+  final String contactNo;
+  final String buildingNo;
+  final String street;
+  final String area;
+  final String pincode;
+  final String city;
+  final String district;
+  final String state;
+  final String zone;
+  final String ward;
+  final String propertyName;
 
-  const AuthDriverLoginRequested({
-    required this.userName,
-    required this.password,
+  const AuthCitizenRegisterRequested({
+    required this.phone,
+    required this.ownerName,
+    required this.contactNo,
+    required this.buildingNo,
+    required this.street,
+    required this.area,
+    required this.pincode,
+    required this.city,
+    required this.district,
+    required this.state,
+    required this.zone,
+    required this.ward,
+    required this.propertyName,
   });
 
   @override
-  List<Object> get props => [userName, password];
+  List<Object?> get props => [
+        phone,
+        ownerName,
+        contactNo,
+        buildingNo,
+        street,
+        area,
+        pincode,
+        city,
+        district,
+        state,
+        zone,
+        ward,
+        propertyName,
+      ];
 }
 
-// Event triggered when the user logs out
 class AuthLogoutRequested extends AuthEvent {}
 
-// Event to check status on app start
 class AuthStatusChecked extends AuthEvent {}

@@ -1,13 +1,13 @@
 // lib/modules/module1_citizen/citizen/login.dart
+import '../../../core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-// Layered imports
 import '../../../core/constants.dart';
 import '../../../logic/auth/auth_bloc.dart';
 import '../../../logic/auth/auth_event.dart';
-import '../../../logic/auth/auth_state.dart'; // <-- Import AuthState
+import '../../../logic/auth/auth_state.dart';
 import '../../../router/app_router.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -22,27 +22,39 @@ class _LoginScreenState extends State<LoginScreen> {
   String _selectedCountryCode = '+91';
   final TextEditingController _mobileController = TextEditingController();
 
-  void _handleContinue(BuildContext context) {
-    final mobileNumber = _mobileController.text.trim();
-    if (mobileNumber.length == 10) {
-      context.read<AuthBloc>().add(
-            AuthLoginRequested(
-              mobileNumber: mobileNumber,
-              otp: '123456', // Mock OTP
-            ),
-          );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter a valid 10-digit mobile number.'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
+  @override
+  void dispose() {
+    _mobileController.dispose();
+    super.dispose();
   }
 
-  void _navigateToRegister(BuildContext context) {
-    context.push(AppRoutePaths.citizenRegister);
+  void _login(BuildContext context) {
+    final mobileNumber = _mobileController.text.trim();
+    if (mobileNumber.length != 10) {
+      _showSnack('Please enter a valid 10-digit mobile number.', Colors.red);
+      return;
+    }
+
+    context
+        .read<AuthBloc>()
+        .add(AuthCitizenLoginRequested(phone: mobileNumber));
+  }
+
+  void _openRegistration(BuildContext context) {
+    final phone = _mobileController.text.trim();
+    context.push(
+      AppRoutePaths.citizenRegister,
+      extra: {
+        if (phone.isNotEmpty) 'phone': phone,
+      },
+    );
+  }
+
+  void _showSnack(String message, Color color) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: color),
+    );
   }
 
   Widget _appLogoAsset() {
@@ -60,11 +72,14 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildCountryCodeDropdown() {
-    // ... (This widget is unchanged)
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final textColor = colorScheme.onSurface;
+
     return Container(
       height: 56,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.accentLight,
         border: Border.all(color: kBorderColor, width: 1),
         borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(8.0),
@@ -74,14 +89,20 @@ class _LoginScreenState extends State<LoginScreen> {
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: _selectedCountryCode,
-          icon: const Icon(Icons.arrow_drop_down, color: kTextColor),
-          style: const TextStyle(fontSize: 16, color: kTextColor),
+          icon: Icon(Icons.arrow_drop_down, color: textColor),
+          style: theme.textTheme.bodyMedium?.copyWith(color: textColor),
           padding: const EdgeInsets.symmetric(horizontal: 8.0),
           dropdownColor: Colors.white,
           items: _countryCodes.map((String code) {
             return DropdownMenuItem<String>(
               value: code,
-              child: Text(code, style: const TextStyle(fontWeight: FontWeight.w500)),
+              child: Text(
+                code,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w500,
+                  color: textColor,
+                ),
+              ),
             );
           }).toList(),
           onChanged: (String? newValue) {
@@ -96,68 +117,65 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
- @override
+  @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final primaryColor = colorScheme.primary;
+    final textColor = colorScheme.onSurface;
+    final placeholderColor = colorScheme.onSurfaceVariant;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: BlocConsumer<AuthBloc, AuthState>(
           listener: (context, state) {
             if (state is AuthStateFailure) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(state.message),
-                  backgroundColor: Colors.red,
-                ),
-              );
+              _showSnack(state.message, Colors.red);
+            }
+            if (state is AuthStateAuthenticatedCitizen) {
+              _showSnack('Welcome back, ${state.userName ?? 'citizen'}!', primaryColor);
             }
           },
           builder: (context, state) {
-            // --- FIX: Check for AuthStateLoading as well ---
             final bool isLoading = state is AuthStateLoading;
-            // --- END FIX ---
 
             return Stack(
               children: [
                 SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 24.0, vertical: 48.0),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24.0, vertical: 48.0),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      // ... (rest of your UI widgets are unchanged)
                       const SizedBox(height: 40),
                       _appLogoAsset(),
                       const SizedBox(height: 32),
                       Text(
                         "Welcome to IWMS",
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleLarge!
-                            .copyWith(color: kTextColor),
+                        style: theme.textTheme.titleLarge!.copyWith(color: textColor),
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        "Enter your mobile number to get started or log in.",
+                        "Log in with your registered mobile number or register your household.",
                         textAlign: TextAlign.center,
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodyMedium!
-                            .copyWith(color: kTextColor.withOpacity(0.7)),
+                        style: theme.textTheme.bodyMedium!.copyWith(
+                          color: placeholderColor,
+                        ),
                       ),
                       const SizedBox(height: 40),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Padding(
-                            padding: EdgeInsets.only(bottom: 8.0),
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8.0),
                             child: Text(
                               "Mobile Number",
-                              style: TextStyle(
+                              style: theme.textTheme.bodyMedium?.copyWith(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w500,
-                                color: kTextColor,
+                                color: textColor,
                               ),
                             ),
                           ),
@@ -169,40 +187,45 @@ class _LoginScreenState extends State<LoginScreen> {
                                   controller: _mobileController,
                                   keyboardType: TextInputType.phone,
                                   maxLength: 10,
-                                  style: const TextStyle(
-                                      color: kTextColor, fontSize: 16),
+                                  enabled: !isLoading,
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: textColor,
+                                    fontSize: 16,
+                                  ),
                                   decoration: InputDecoration(
-                                    contentPadding: const EdgeInsets.symmetric(
-                                        horizontal: 16.0),
+                                    contentPadding:
+                                        const EdgeInsets.symmetric(horizontal: 16.0),
                                     hintText: "Mobile Number (10 digits)",
-                                    hintStyle: TextStyle(
-                                        color: kPlaceholderColor, fontSize: 16),
+                                    hintStyle: theme.textTheme.bodyMedium?.copyWith(
+                                      color: placeholderColor,
+                                      fontSize: 16,
+                                    ),
                                     filled: true,
-                                    fillColor: kContainerColor,
+                                    fillColor: theme.inputDecorationTheme.fillColor,
                                     counterText: '',
                                     border: OutlineInputBorder(
                                       borderRadius: const BorderRadius.only(
                                         topRight: Radius.circular(8.0),
                                         bottomRight: Radius.circular(8.0),
                                       ),
-                                      borderSide: BorderSide(
-                                          color: kBorderColor, width: 1),
+                                      borderSide:
+                                          BorderSide(color: kBorderColor, width: 1),
                                     ),
                                     enabledBorder: OutlineInputBorder(
                                       borderRadius: const BorderRadius.only(
                                         topRight: Radius.circular(8.0),
                                         bottomRight: Radius.circular(8.0),
                                       ),
-                                      borderSide: BorderSide(
-                                          color: kBorderColor, width: 1),
+                                      borderSide:
+                                          BorderSide(color: kBorderColor, width: 1),
                                     ),
                                     focusedBorder: OutlineInputBorder(
                                       borderRadius: const BorderRadius.only(
                                         topRight: Radius.circular(8.0),
                                         bottomRight: Radius.circular(8.0),
                                       ),
-                                      borderSide: BorderSide(
-                                          color: kPrimaryColor, width: 2),
+                                      borderSide:
+                                          BorderSide(color: primaryColor, width: 2),
                                     ),
                                   ),
                                 ),
@@ -216,16 +239,15 @@ class _LoginScreenState extends State<LoginScreen> {
                         width: double.infinity,
                         height: 56,
                         child: ElevatedButton(
-                          onPressed:
-                              isLoading ? null : () => _handleContinue(context),
+                          onPressed: isLoading ? null : () => _login(context),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: kPrimaryColor,
+                            backgroundColor: primaryColor,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8.0),
                             ),
                           ),
                           child: Text(
-                            "Continue (Send OTP)",
+                            'Log In',
                             style: Theme.of(context)
                                 .textTheme
                                 .labelLarge!
@@ -236,16 +258,16 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 32),
-                      GestureDetector(
-                        onTap: () => _navigateToRegister(context),
+                      const SizedBox(height: 16),
+                      TextButton(
+                        onPressed: isLoading ? null : () => _openRegistration(context),
                         child: Text(
-                          "New user? Registration is quick and easy.",
-                          textAlign: TextAlign.center,
+                          "New user? Register your household",
                           style: TextStyle(
                             fontSize: 14,
-                            color: kTextColor.withOpacity(0.7),
-                            decoration: TextDecoration.underline,
+                            color: isLoading
+                                ? textColor.withOpacity(0.5)
+                                : primaryColor,
                           ),
                         ),
                       ),

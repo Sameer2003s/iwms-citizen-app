@@ -3,11 +3,14 @@
 import 'package:flutter/material.dart';
 
 // --- COLOR AND STYLE CONSTANTS ---
-const Color kPrimaryColor = Color.fromARGB(255, 30, 139, 34); 
-const Color kTextColor = Color(0xFF212121); // Dark Black for text
-const Color kPlaceholderColor = Color(0xFF757575); // Grey for hints
-const Color kContainerColor = Color(0xFFF5F5F5); // Light container background
-const Color kBorderColor = Color(0xFFE0E0E0); // Light grey border
+const Color kPrimaryColor = Color(0xFF2E7D32); // Brand green primary
+const Color kAccentColor = Color(0xFF66BB6A); // Lighter green accent
+const Color kSoftTintColor = Color(0xFFE8F5E9); // Soft green background
+
+const Color kTextColor = Color(0xFF1B5E20); // Deep green for light mode text
+const Color kPlaceholderColor = Color(0xFF6B8F71); // Muted green for hints
+const Color kContainerColor = kSoftTintColor; // Light container background
+const Color kBorderColor = Color(0xFFCDE6D0); // Subtle green border
 
 // --- NEW ENUM FOR FILTERING (Shared by Bloc and UI) ---
 enum VehicleFilter { all, running, idle, parked, noData }
